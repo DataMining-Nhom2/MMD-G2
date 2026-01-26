@@ -1,0 +1,33 @@
+
+================================================================================
+                  BÁO CÁO EDA - LENDING CLUB LOAN DATA
+================================================================================
+Ngày tạo: 2026-01-20 23:14:33
+
+1. TỔNG QUAN DATASET
+   • Số mẫu phân tích: 50,000 records
+   • Số biến: 151 (115 số + 36 phân loại)
+   • Bộ nhớ: 128.05 MB
+   • Giá trị thiếu: 33.36%
+
+2. BIẾN MỤC TIÊU (loan_status)
+   • Fully Paid: 34,978 (69.96%)
+   • Charged Off: 9,027 (18.05%)
+   • Tỷ lệ khoản vay xấu: 18.62%
+
+3. INSIGHT CHÍNH
+   • Grade là predictor mạnh nhất
+   • Grade A: 5.24% xấu, lãi suất 6.80%
+   • Grade G: 49.55% xấu, lãi suất 27.53%
+   • Số tiền vay TB: $15,019
+   • Thu nhập TB: $79,193
+
+4. ĐỀ XUẤT
+   • Sử dụng Grade làm feature chính
+   • Xử lý class imbalance trước khi modeling
+   • Áp dụng XGBoost/LightGBM
+   • Đánh giá bằng AUC-ROC, không phải Accuracy
+
+================================================================================
+                            KẾT THÚC BÁO CÁO
+================================================================================

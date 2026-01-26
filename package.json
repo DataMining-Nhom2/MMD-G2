@@ -1,0 +1,12 @@
+{
+  "name": "miningmassivedataset",
+  "version": "0.0.1",
+  "description": "This project is for educational purposes. Subject: Massive Data Mining",
+  "license": "ISC",
+  "author": "sakanaowo",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
