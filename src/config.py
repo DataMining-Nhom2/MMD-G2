@@ -43,6 +43,9 @@ PGN_JSONL      = DATA_PROCESSED / "lichess_db_standard_rated_2025-12_converted.j
 PGN_ERROR_LOG  = DATA_PROCESSED / "convert_errors.log"
 PGN_SKIP_LOG   = DATA_PROCESSED / "convert_skipped.log"
 
+# Output Parquet (Phương án B: JSONL → Parquet)
+PARQUET_ML     = DATA_PROCESSED / "lichess_2025-12_ml.parquet"
+
 # ── EDA ─────────────────────────────────────────────────────
 EDA_DIR        = ROOT / "eda"
 EDA_OUTPUTS    = EDA_DIR / "outputs"

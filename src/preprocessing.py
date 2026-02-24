@@ -39,17 +39,13 @@ from src.config import PGN_ZST, PGN_JSONL, PGN_ERROR_LOG, PGN_SKIP_LOG
 
 try:
     import orjson  # pip install orjson
-
     def _dumps(obj: dict) -> str:
-        return orjson.dumps(obj).decode("utf-8")
-
+        return orjson.dumps(obj).decode('utf-8')
     USING_ORJSON = True
 except ImportError:
     import json
-
     def _dumps(obj: dict) -> str:
         return json.dumps(obj, ensure_ascii=False)
-
     USING_ORJSON = False
 
 
@@ -58,29 +54,29 @@ except ImportError:
 # ╚══════════════════════════════════════════════════════════╝
 
 # Path lấy từ src/config.py — không hardcode ở đây nữa
-INPUT_FILE = PGN_ZST
-OUTPUT_FILE = PGN_JSONL
-ERROR_LOG = PGN_ERROR_LOG  # ván lỗi parse (PGN gốc kèm theo)
-SKIPPED_LOG = PGN_SKIP_LOG  # ván bị filter (lý do + PGN gốc)
+INPUT_FILE   = PGN_ZST
+OUTPUT_FILE  = PGN_JSONL
+ERROR_LOG    = PGN_ERROR_LOG     # ván lỗi parse (PGN gốc kèm theo)
+SKIPPED_LOG  = PGN_SKIP_LOG     # ván bị filter (lý do + PGN gốc)
 
-# ── CPU ──────────────────────────────────────────────────
-# i5-14600KF: 20 logical cores
-# Để lại 2 cho reader (main) + writer + OS
-NUM_WORKERS = max(1, mp.cpu_count() - 4)  # = 16
+# -- CPU --------------------------------------------------
+# i9-14900HX: 32 threads. 
+# Ưu tiên nhiều worker vì parse PGN là tác vụ cực kỳ tốn CPU.
+NUM_WORKERS     = 24  
 
-# ── Queue / batch sizes ──────────────────────────────────
-CHUNK_SIZE = 400  # ván PGN thô / chunk gửi cho worker
-RAW_QUEUE_SIZE = 250  # ~250 × 400 ván × ~1.5 KB ≈ ~150 MB RAM
-JSON_QUEUE_SIZE = 500  # list JSON strings chờ writer
-WRITE_BATCH = 8_000  # dòng JSON ghi mỗi lần f_out.write()
-ERR_QUEUE_SIZE = 2_000  # lỗi chờ error-writer
+# -- Queue / batch sizes (Tối ưu cho 16GB RAM) ------------
+CHUNK_SIZE      = 200    # Giảm xuống để tránh chunk quá nặng
+RAW_QUEUE_SIZE  = 100    # 100 chunk * 200 ván * ~1.5KB = ~30MB (An toàn cho RAM)
+JSON_QUEUE_SIZE = 200    # Giữ hàng đợi đầu ra gọn nhẹ
+WRITE_BATCH     = 5_000  # Ghi file thường xuyên hơn để giải phóng RAM
+ERR_QUEUE_SIZE  = 1_000 
 
-# ── I/O ──────────────────────────────────────────────────
-ZST_READ_BLOCK = 1 << 19  # 512 KB text block mỗi lần đọc
-FILE_BUF_SIZE = 1 << 21  # 2 MB write buffer cho JSONL
+# -- I/O --------------------------------------------------
+ZST_READ_BLOCK  = 1 << 18   # 256 KB (Đọc block nhỏ hơn để mượt mà)
+FILE_BUF_SIZE   = 1 << 20   # 1 MB buffer cho ghi file
 
 # ── Tiến độ ──────────────────────────────────────────────
-LOG_INTERVAL = 100_000  # in mỗi N ván
+LOG_INTERVAL    = 100_000   # in mỗi N ván
 
 # ╔══════════════════════════════════════════════════════════╗
 # ║              FILTER DATA QUALITY (ML)                   ║
@@ -90,17 +86,17 @@ LOG_INTERVAL = 100_000  # in mỗi N ván
 
 FILTER = {
     # Bỏ ván không có Elo (bot, anonymous)
-    "require_elo": True,
+    "require_elo"   : True,
     # Elo tối thiểu cả 2 bên (0 = tắt)
-    "min_elo": 0,
+    "min_elo"       : 0,
     # Elo tối đa cả 2 bên (0 = tắt)
-    "max_elo": 0,
+    "max_elo"       : 0,
     # Bỏ ván dưới N nước (too short: forfeits / abandoned)
-    "min_moves": 5,
+    "min_moves"     : 5,
     # Bỏ ván trên N nước (0 = tắt)
-    "max_moves": 0,
+    "max_moves"     : 0,
     # Bỏ ván không có nước đi (headers-only)
-    "require_moves": True,
+    "require_moves" : True,
     # Bỏ ván kết quả * (chưa kết thúc)
     "require_result": True,
 }
@@ -110,8 +106,7 @@ FILTER = {
 # TẦNG 1: READER
 # ══════════════════════════════════════════════════════════
 
-_GAME_SEP_RE = re.compile(r"\n\n(?=\[Event )")
-
+_GAME_SEP_RE = re.compile(r'\n\n(?=\[Event )')
 
 def reader_process(input_path: str, raw_queue: Queue) -> None:
     """
@@ -120,14 +115,12 @@ def reader_process(input_path: str, raw_queue: Queue) -> None:
     Không parse PGN → CPU thấp, I/O throughput cao.
     """
     try:
-        with open(input_path, "rb") as f_in:
+        with open(input_path, 'rb') as f_in:
             dctx = zstd.ZstdDecompressor(max_window_size=2**31)
-            with dctx.stream_reader(
-                f_in, read_size=1 << 24
-            ) as reader:  # 16 MB zst buffer
-                text_stream = io.TextIOWrapper(reader, encoding="utf-8")
-                leftover = ""
-                chunk_buf = []
+            with dctx.stream_reader(f_in, read_size=1 << 24) as reader:  # 16 MB zst buffer
+                text_stream = io.TextIOWrapper(reader, encoding='utf-8')
+                leftover    = ''
+                chunk_buf   = []
 
                 while True:
                     block = text_stream.read(ZST_READ_BLOCK)
@@ -136,8 +129,12 @@ def reader_process(input_path: str, raw_queue: Queue) -> None:
 
                     leftover += block
 
-                    if "\n\n[Event " in leftover:
-                        parts = _GAME_SEP_RE.split(leftover)
+                    if len(leftover) > 10 * 1024 * 1024: 
+                        # Xử lý cắt bỏ hoặc log lỗi nếu cần
+                        pass
+
+                    if '\n\n[Event ' in leftover:
+                        parts    = _GAME_SEP_RE.split(leftover)
                         leftover = parts[-1]  # phần cuối chưa hoàn chỉnh
 
                         for pgn_text in parts[:-1]:
@@ -166,7 +163,6 @@ def reader_process(input_path: str, raw_queue: Queue) -> None:
 # ══════════════════════════════════════════════════════════
 # TẦNG 2: WORKERS
 # ══════════════════════════════════════════════════════════
-
 
 def _safe_int(value: str) -> int | None:
     """Elo string → int, None nếu không hợp lệ."""
@@ -200,7 +196,7 @@ def parse_and_filter(pgn_text: str) -> tuple[dict | None, str | None]:
 
         # Filter: nước đi — đếm một lần duy nhất, tái dùng cho num_moves
         moves_list = list(game.mainline_moves())
-        num_moves = len(moves_list)
+        num_moves  = len(moves_list)
 
         if FILTER["require_moves"] and num_moves == 0:
             return None, "no_moves"
@@ -214,46 +210,42 @@ def parse_and_filter(pgn_text: str) -> tuple[dict | None, str | None]:
         black_elo = _safe_int(headers.get("BlackElo", ""))
 
         if FILTER["require_elo"] and (white_elo is None or black_elo is None):
-            return (
-                None,
-                f"missing_elo(W={headers.get('WhiteElo')} B={headers.get('BlackElo')})",
-            )
+            return None, f"missing_elo(W={headers.get('WhiteElo')} B={headers.get('BlackElo')})"
         if FILTER["min_elo"] > 0 and (
             (white_elo or 0) < FILTER["min_elo"] or (black_elo or 0) < FILTER["min_elo"]
         ):
             return None, f"elo_too_low(W={white_elo} B={black_elo})"
         if FILTER["max_elo"] > 0 and (
-            (white_elo or 9999) > FILTER["max_elo"]
-            or (black_elo or 9999) > FILTER["max_elo"]
+            (white_elo or 9999) > FILTER["max_elo"] or (black_elo or 9999) > FILTER["max_elo"]
         ):
             return None, f"elo_too_high(W={white_elo} B={black_elo})"
 
         # Build SAN string (moves_list đã có sẵn → không gọi mainline_moves() 2 lần)
         moves_san = game.board().variation_san(moves_list)
 
-        site_url = headers.get("Site", "")
-        game_id = site_url.rsplit("/", 1)[-1] if "/" in site_url else site_url
-        elo_avg = (white_elo + black_elo) // 2 if (white_elo and black_elo) else None
+        site_url  = headers.get("Site", "")
+        game_id   = site_url.rsplit("/", 1)[-1] if "/" in site_url else site_url
+        elo_avg   = (white_elo + black_elo) // 2 if (white_elo and black_elo) else None
 
         return {
-            "GameID": game_id,
-            "Event": headers.get("Event", ""),
-            "Date": headers.get("UTCDate", headers.get("Date", "")),
-            "Time": headers.get("UTCTime", ""),
-            "White": headers.get("White", ""),
-            "Black": headers.get("Black", ""),
-            "Result": result,
-            "WhiteElo": white_elo,  # int | None
-            "BlackElo": black_elo,  # int | None
-            "EloAvg": elo_avg,  # NEW: bucket filter khi training
-            "NumMoves": num_moves,  # NEW: downstream filter
-            "WhiteRatingDiff": headers.get("WhiteRatingDiff", ""),
-            "BlackRatingDiff": headers.get("BlackRatingDiff", ""),
-            "ECO": headers.get("ECO", ""),
-            "Opening": headers.get("Opening", ""),
-            "TimeControl": headers.get("TimeControl", ""),
-            "Termination": headers.get("Termination", ""),
-            "Moves": moves_san,
+            "GameID"          : game_id,
+            "Event"           : headers.get("Event", ""),
+            "Date"            : headers.get("UTCDate", headers.get("Date", "")),
+            "Time"            : headers.get("UTCTime", ""),
+            "White"           : headers.get("White", ""),
+            "Black"           : headers.get("Black", ""),
+            "Result"          : result,
+            "WhiteElo"        : white_elo,          # int | None
+            "BlackElo"        : black_elo,          # int | None
+            "EloAvg"          : elo_avg,            # NEW: bucket filter khi training
+            "NumMoves"        : num_moves,          # NEW: downstream filter
+            "WhiteRatingDiff" : headers.get("WhiteRatingDiff", ""),
+            "BlackRatingDiff" : headers.get("BlackRatingDiff", ""),
+            "ECO"             : headers.get("ECO", ""),
+            "Opening"         : headers.get("Opening", ""),
+            "TimeControl"     : headers.get("TimeControl", ""),
+            "Termination"     : headers.get("Termination", ""),
+            "Moves"           : moves_san,
         }, None
 
     except Exception:
@@ -261,10 +253,10 @@ def parse_and_filter(pgn_text: str) -> tuple[dict | None, str | None]:
 
 
 def worker_process(
-    raw_queue: Queue,
-    json_queue: Queue,
-    err_queue: Queue,
-    worker_id: int,
+    raw_queue  : Queue,
+    json_queue : Queue,
+    err_queue  : Queue,
+    worker_id  : int,
 ) -> None:
     while True:
         chunk = raw_queue.get()
@@ -273,8 +265,8 @@ def worker_process(
             break
 
         ok_results = []
-        skip_items = []  # [(reason, pgn_text)]
-        err_pgns = []  # [pgn_text] — lỗi parse thực sự
+        skip_items = []   # [(reason, pgn_text)]
+        err_pgns   = []   # [pgn_text] — lỗi parse thực sự
 
         for pgn_text in chunk:
             try:
@@ -295,13 +287,11 @@ def worker_process(
 
         if err_pgns or skip_items:
             try:
-                err_queue.put_nowait(
-                    {
-                        "worker": worker_id,
-                        "errors": err_pgns,
-                        "skipped": skip_items,
-                    }
-                )
+                err_queue.put_nowait({
+                    "worker"  : worker_id,
+                    "errors"  : err_pgns,
+                    "skipped" : skip_items,
+                })
             except Exception:
                 pass  # err_queue đầy → hi sinh log entry, không block
 
@@ -310,11 +300,10 @@ def worker_process(
 # TẦNG 2b: ERROR WRITER
 # ══════════════════════════════════════════════════════════
 
-
 def error_writer_process(
-    err_queue: Queue,
-    num_workers: int,
-    error_path: str,
+    err_queue   : Queue,
+    num_workers : int,
+    error_path  : str,
     skipped_path: str,
 ) -> None:
     """
@@ -322,14 +311,14 @@ def error_writer_process(
     - error_path  : PGN gốc của ván lỗi parse để debug
     - skipped_path: PGN gốc + lý do filter để audit data quality
     """
-    total_errors = 0
+    total_errors  = 0
     total_skipped = 0
-    done_workers = 0
+    done_workers  = 0
     skip_reasons: dict[str, int] = {}
 
     with (
-        open(error_path, "w", encoding="utf-8") as f_err,
-        open(skipped_path, "w", encoding="utf-8") as f_skip,
+        open(error_path,    'w', encoding='utf-8') as f_err,
+        open(skipped_path,  'w', encoding='utf-8') as f_skip,
     ):
         while True:
             item = err_queue.get()
@@ -371,29 +360,18 @@ def error_writer_process(
 # TẦNG 3: WRITER
 # ══════════════════════════════════════════════════════════
 
-
 def writer_process(
-    json_queue: Queue,
-    err_queue: Queue,
-    output_path: str,
-    num_workers: int,
+    json_queue  : Queue,
+    err_queue   : Queue,
+    output_path : str,
+    num_workers : int,
 ) -> None:
-    start_time = time.time()
-    game_count = 0
+    start_time   = time.time()
+    game_count   = 0
     done_workers = 0
-    write_buf = []
+    write_buf    = []
 
-    # Khởi tạo tqdm progress bar
-    pbar = tqdm(
-        desc="Đang xử lý",
-        unit=" ván",
-        unit_scale=True,
-        smoothing=0.1,
-        dynamic_ncols=True,
-        postfix={"tốc độ": "0 ván/s", "dung lượng": "0 GB"},
-    )
-
-    with open(output_path, "w", encoding="utf-8", buffering=FILE_BUF_SIZE) as f_out:
+    with open(output_path, 'w', encoding='utf-8', buffering=FILE_BUF_SIZE) as f_out:
         while done_workers < num_workers:
             item = json_queue.get()
 
@@ -402,32 +380,29 @@ def writer_process(
                 continue
 
             write_buf.extend(item)
-            batch_size = len(item)
-            game_count += batch_size
-
-            # Cập nhật progress bar
-            pbar.update(batch_size)
-
-            # Cập nhật thông tin bổ sung
-            elapsed = time.time() - start_time
-            if elapsed > 0:
-                speed = game_count / elapsed
-                gb_est = game_count * 350 / 1e9
-                pbar.set_postfix(
-                    {"tốc độ": f"{speed:,.0f} ván/s", "dung lượng": f"{gb_est:.1f} GB"},
-                    refresh=False,
-                )
+            game_count += len(item)
 
             if len(write_buf) >= WRITE_BATCH:
-                f_out.write("\n".join(write_buf))
-                f_out.write("\n")
+                f_out.write('\n'.join(write_buf))
+                f_out.write('\n')
                 write_buf.clear()
 
-        if write_buf:
-            f_out.write("\n".join(write_buf))
-            f_out.write("\n")
+            if game_count % LOG_INTERVAL < len(item):
+                elapsed = time.time() - start_time
+                speed   = game_count / elapsed if elapsed > 0 else 0
+                gb_est  = game_count * 350 / 1e9
+                print(
+                    f"  ✓ {game_count:>12,} ván  |"
+                    f"  {speed:>8,.0f} ván/s  |"
+                    f"  ~{gb_est:.1f} GB  |"
+                    f"  {elapsed/60:.1f} phút",
+                    end='\r'
+                )
 
-    pbar.close()
+        if write_buf:
+            f_out.write('\n'.join(write_buf))
+            f_out.write('\n')
+
     total_time = time.time() - start_time
 
     # Báo error_writer dừng
@@ -447,7 +422,6 @@ def writer_process(
 # MAIN
 # ══════════════════════════════════════════════════════════
 
-
 def convert_zst_pgn_to_jsonl(input_path: str, output_path: str) -> None:
     if not os.path.exists(input_path):
         print(f"Lỗi: Không tìm thấy file '{input_path}'")
@@ -462,29 +436,25 @@ def convert_zst_pgn_to_jsonl(input_path: str, output_path: str) -> None:
     print(f"  Input    : {input_path}  ({file_size_gb:.1f} GB compressed)")
     print(f"  Output   : {output_path}")
     print(f"  Workers  : {NUM_WORKERS} / {mp.cpu_count()} logical cores")
-    print(
-        f"  orjson   : {'✓' if USING_ORJSON else '✗  (pip install orjson để tăng tốc ~4×)'}"
-    )
+    print(f"  orjson   : {'✓' if USING_ORJSON else '✗  (pip install orjson để tăng tốc ~4×)'}")
     print(f"  Filters  : {active_filters}")
     print(f"{'═'*64}\n")
 
-    raw_queue = Queue(maxsize=RAW_QUEUE_SIZE)
+    raw_queue  = Queue(maxsize=RAW_QUEUE_SIZE)
     json_queue = Queue(maxsize=JSON_QUEUE_SIZE)
-    err_queue = Queue(maxsize=ERR_QUEUE_SIZE)
+    err_queue  = Queue(maxsize=ERR_QUEUE_SIZE)
 
     err_writer = Process(
         target=error_writer_process,
         args=(err_queue, NUM_WORKERS, ERROR_LOG, SKIPPED_LOG),
-        daemon=False,
-        name="ErrorWriter",
+        daemon=False, name="ErrorWriter",
     )
     err_writer.start()
 
     writer = Process(
         target=writer_process,
         args=(json_queue, err_queue, output_path, NUM_WORKERS),
-        daemon=False,
-        name="Writer",
+        daemon=False, name="Writer",
     )
     writer.start()
 
@@ -493,8 +463,7 @@ def convert_zst_pgn_to_jsonl(input_path: str, output_path: str) -> None:
         w = Process(
             target=worker_process,
             args=(raw_queue, json_queue, err_queue, i),
-            daemon=True,
-            name=f"Worker-{i}",
+            daemon=True, name=f"Worker-{i}",
         )
         w.start()
         workers.append(w)
@@ -510,6 +479,6 @@ def convert_zst_pgn_to_jsonl(input_path: str, output_path: str) -> None:
 
 
 if __name__ == "__main__":
-    mp.set_start_method("spawn" if os.name == "nt" else "fork")
+    mp.set_start_method('spawn' if os.name == 'nt' else 'fork')
     # Path objects từ config → str cho các hàm open() trong subprocess
     convert_zst_pgn_to_jsonl(str(INPUT_FILE), str(OUTPUT_FILE))
