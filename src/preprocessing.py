@@ -30,6 +30,7 @@ import re
 import traceback
 import sys
 from pathlib import Path
+from tqdm import tqdm
 
 # Add project root to sys.path to ensure imports work
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

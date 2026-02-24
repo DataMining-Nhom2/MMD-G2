@@ -19,7 +19,7 @@ from pathlib import Path
 import os
 
 # ── Root của project (thư mục chứa pyproject.toml) ──────────
-# _file_ = .../project/src/config.py
+# __file__ = .../project/src/config.py
 # .parent   = .../project/src/
 # .parent   = .../project/          ← ROOT
 ROOT = Path(__file__).resolve().parent.parent
