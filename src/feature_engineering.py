@@ -238,10 +238,22 @@ class MoveTransformer:
     - Tích hợp python-chess để parse SAN ổn định cho các feature board-state.
     """
 
-    def __init__(self, n_ply: int = 10, svd_dim: int = 50) -> None:
+    def __init__(
+        self,
+        n_ply: int = 10,
+        svd_dim: int = 50,
+        tfidf_max_features: int = 500,
+        tfidf_ngram_range: tuple[int, int] = (1, 2),
+        tfidf_min_df: int | float = 2,
+        tfidf_max_df: int | float = 0.95,
+    ) -> None:
         self.n_ply = n_ply
         self.svd_dim = svd_dim
         self.bigram_vocab: list[str] = []
+        self.tfidf_max_features: int = tfidf_max_features
+        self.tfidf_ngram_range: tuple[int, int] = tfidf_ngram_range
+        self.tfidf_min_df: int | float = tfidf_min_df
+        self.tfidf_max_df: int | float = tfidf_max_df
         self.tfidf_vectorizer: TfidfVectorizer | None = None
         self.svd_model: TruncatedSVD | None = None
         self._effective_svd_dim: int = 0
@@ -252,8 +264,19 @@ class MoveTransformer:
         text = moves_san or ""
         text = re.sub(r"\d+\.(\.\.)?", " ", text)
         text = re.sub(r"\s*(1-0|0-1|1/2-1/2|\*)\s*", " ", text)
+        text = text.replace("0-0-0", "O-O-O").replace("0-0", "O-O")
         text = re.sub(r"\s+", " ", text).strip()
         return text
+
+    @staticmethod
+    def _normalize_token(token: str) -> str:
+        """Chuẩn hóa token SAN: bỏ annotation noise nhưng giữ thông tin tactical chính."""
+        t = token.strip()
+        if not t:
+            return ""
+        # Bỏ annotation dạng !, ?, !!, ?! ở cuối token.
+        t = re.sub(r"[!?]+$", "", t)
+        return t
 
     def _tokenize(self, moves_san: str, n_ply: int | None = None) -> list[str]:
         """Tách token SAN và lấy tối đa n_ply token đầu tiên."""
@@ -261,7 +284,14 @@ class MoveTransformer:
         clean = self._clean_moves_text(moves_san)
         if not clean:
             return []
-        return clean.split(" ")[:n]
+        out: list[str] = []
+        for raw in clean.split(" "):
+            tok = self._normalize_token(raw)
+            if tok:
+                out.append(tok)
+            if len(out) >= n:
+                break
+        return out
 
     @staticmethod
     def _bigrams(tokens: Sequence[str]) -> list[str]:
@@ -341,6 +371,18 @@ class MoveTransformer:
         pawn_push_ratio = float(pawn_moves / denom)
         return has_castles_ks, has_castles_qs, float(check_count), pawn_push_ratio
 
+    @staticmethod
+    def _token_meta_features(tokens: Sequence[str]) -> tuple[float, float, float]:
+        """Feature meta từ SAN token: diversity/capture/check ratios."""
+        if not tokens:
+            return 0.0, 0.0, 0.0
+
+        total = float(len(tokens))
+        unique_ratio = float(len(set(tokens)) / total)
+        capture_ratio = float(sum(1 for t in tokens if "x" in t) / total)
+        check_ratio = float(sum(1 for t in tokens if ("+" in t or "#" in t)) / total)
+        return unique_ratio, capture_ratio, check_ratio
+
     def fit(self, moves_series: pl.Series, sample_size: int = 500_000) -> None:
         """Fit vectorizer/reducer cho move sequence.
 
@@ -359,15 +401,32 @@ class MoveTransformer:
         # Giữ top bigrams cho Task 3.4.
         self.bigram_vocab = [ng for ng, _ in counter.most_common(200)]
 
-        # Fit TF-IDF bigram.
+        # Fit TF-IDF n-gram theo cấu hình tối ưu.
         self.tfidf_vectorizer = TfidfVectorizer(
             analyzer="word",
-            ngram_range=(2, 2),
+            ngram_range=self.tfidf_ngram_range,
             lowercase=False,
             token_pattern=r"(?u)\b[^\s]+\b",
-            max_features=200,
+            max_features=self.tfidf_max_features,
+            min_df=self.tfidf_min_df,
+            max_df=self.tfidf_max_df,
+            sublinear_tf=True,
         )
-        tfidf = self.tfidf_vectorizer.fit_transform(docs)
+        try:
+            tfidf = self.tfidf_vectorizer.fit_transform(docs)
+        except ValueError:
+            # Batch nhỏ có thể bị prune hết term; fallback để pipeline không vỡ.
+            self.tfidf_vectorizer = TfidfVectorizer(
+                analyzer="word",
+                ngram_range=self.tfidf_ngram_range,
+                lowercase=False,
+                token_pattern=r"(?u)\b[^\s]+\b",
+                max_features=self.tfidf_max_features,
+                min_df=1,
+                max_df=1.0,
+                sublinear_tf=True,
+            )
+            tfidf = self.tfidf_vectorizer.fit_transform(docs)
 
         n_features = int(tfidf.shape[1])
         if n_features <= 1:
@@ -387,12 +446,13 @@ class MoveTransformer:
         """Trả về ma trận đặc trưng move sequence.
 
         Cấu trúc cột:
-        - svd_0..svd_{svd_dim-1}: placeholder 0.0 cho Task 3.5/3.6
+        - svd_0..svd_{svd_dim-1}
         - move_entropy
         - has_castles_ks, has_castles_qs
         - check_count_15ply
         - pawn_push_ratio
         - first_move_e4, first_move_d4, first_move_Nf3, first_move_c4, first_move_other
+        - unique_move_ratio, capture_ratio, check_symbol_ratio
         """
         rows: list[list[float]] = []
         docs: list[str] = []
@@ -419,6 +479,9 @@ class MoveTransformer:
             ent = self._entropy(tokens)
             ks, qs, checks, pawn_ratio = self._board_state_features(tokens)
             fm = self._first_move_group(tokens)
+            unique_ratio, capture_ratio, check_symbol_ratio = self._token_meta_features(
+                tokens
+            )
 
             rows.append(
                 [
@@ -429,6 +492,9 @@ class MoveTransformer:
                     checks,
                     pawn_ratio,
                     *fm,
+                    unique_ratio,
+                    capture_ratio,
+                    check_symbol_ratio,
                 ]
             )
 
@@ -449,7 +515,15 @@ class FeaturePipeline:
             realtime_mode=self.config.realtime_mode,
         )
         self.move = MoveTransformer(
-            n_ply=self.config.n_ply, svd_dim=self.config.svd_dim
+            n_ply=self.config.n_ply,
+            svd_dim=self.config.svd_dim,
+            tfidf_max_features=self.config.tfidf_max_features,
+            tfidf_ngram_range=(
+                self.config.tfidf_ngram_min,
+                self.config.tfidf_ngram_max,
+            ),
+            tfidf_min_df=self.config.tfidf_min_df,
+            tfidf_max_df=self.config.tfidf_max_df,
         )
         self.is_fitted = False
 
@@ -549,6 +623,9 @@ class FeaturePipeline:
                 "first_move_Nf3",
                 "first_move_c4",
                 "first_move_other",
+                "unique_move_ratio",
+                "capture_ratio",
+                "check_symbol_ratio",
             ]
         )
         move_df = pl.DataFrame(move_np, schema=move_cols)

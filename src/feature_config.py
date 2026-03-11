@@ -14,11 +14,16 @@ from src.config import DATA_PROCESSED, DATA_DIR
 
 
 # Cấu hình feature mặc định
-N_MOVES_DEFAULT = 10
+N_MOVES_DEFAULT = 15
 ECO_TOP_N_DEFAULT = 100
 TFIDF_SAMPLE_SIZE_DEFAULT = 500_000
 SVD_DIM_DEFAULT = 50
 BATCH_SIZE_DEFAULT = 10_000_000
+TFIDF_MAX_FEATURES_DEFAULT = 500
+TFIDF_NGRAM_MIN_DEFAULT = 1
+TFIDF_NGRAM_MAX_DEFAULT = 2
+TFIDF_MIN_DF_DEFAULT = 2
+TFIDF_MAX_DF_DEFAULT = 0.95
 
 
 # Bins mục tiêu ModelBand theo EloAvg: [0, 1000, 1400, 1800, 2200, +inf)
@@ -74,6 +79,11 @@ class FeatureConfig:
     eco_top_n: int = ECO_TOP_N_DEFAULT
     n_ply: int = N_MOVES_DEFAULT
     tfidf_sample_size: int = TFIDF_SAMPLE_SIZE_DEFAULT
+    tfidf_max_features: int = TFIDF_MAX_FEATURES_DEFAULT
+    tfidf_ngram_min: int = TFIDF_NGRAM_MIN_DEFAULT
+    tfidf_ngram_max: int = TFIDF_NGRAM_MAX_DEFAULT
+    tfidf_min_df: int | float = TFIDF_MIN_DF_DEFAULT
+    tfidf_max_df: int | float = TFIDF_MAX_DF_DEFAULT
     svd_dim: int = SVD_DIM_DEFAULT
     realtime_mode: bool = True
     random_seed: int = 42

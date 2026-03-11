@@ -1,10 +1,10 @@
 ---
 phase: implementation
-title: Implementation — Feature Engineering & Re-baseline ELO realtime
-description: Kết quả triển khai các phase và kết quả smoke-run cho re-baseline
+title: Implementation — Feature Engineering ELO realtime (FE-only)
+description: Kết quả triển khai phần Feature Engineering độc lập với huấn luyện/evaluation
 ---
 
-# Implementation — Feature Engineering & Re-baseline ELO realtime
+# Implementation — Feature Engineering ELO realtime (FE-only)
 
 ## Phạm vi đã triển khai
 
@@ -12,22 +12,49 @@ description: Kết quả triển khai các phase và kết quả smoke-run cho r
 - Phase 2: Tabular transformer (ECO, EcoCategory, GameFormat, numeric, EloDiff offline).
 - Phase 3: Move transformer (tokenizer, bigram, entropy, python-chess board-state, TF-IDF + SVD).
 - Phase 4: Feature store pipeline (temporal split, batch processing, quality gate, metadata).
-- Phase 5 (smoke): Re-baseline XGBoost + ablation + feature importance artifact.
+- Phase 5 (train/eval): **Deferred** sang Model Training phase.
 
-## Artifact đầu ra (smoke)
+## Artifact đầu ra FE
+
+- `data/features/train_features.parquet`
+- `data/features/val_features.parquet`
+- `data/features/feature_columns.json`
+- `data/features/tfidf_vocabulary.pkl`
+- `data/features/svd_components.pkl`
+
+## Artifact smoke train/eval (tham khảo lịch sử)
 
 - `data/features/smoke/feature_importance_top20.png`
 - `data/features/smoke/rebaseline_summary.json`
 - `data/features/smoke/train_features.parquet`
 - `data/features/smoke/val_features.parquet`
 
-## Kết quả smoke run (3k train + 3k val)
+## Kết quả smoke train/eval trước đó (không dùng làm tiêu chí FE-only)
 
 - Accuracy: `0.3723`
 - Macro-F1: `0.2546`
 - So với EDA baseline `0.4418`: **chưa đạt**, giảm `-0.0695` điểm accuracy.
 
-## Kết quả ablation (smoke)
+## Iteration tối ưu #2 (move-first, lịch sử)
+
+Thay đổi chính:
+
+- `n_ply`: 10 -> 15
+- TF-IDF: bigram-only -> 1-2gram, `max_features=500`, `sublinear_tf=True`
+- Thêm move meta features: `unique_move_ratio`, `capture_ratio`, `check_symbol_ratio`
+- Rebaseline: thêm class-balanced sample weights
+
+Kết quả smoke mới:
+
+- Accuracy: `0.3673` (giảm nhẹ so với smoke trước)
+- Macro-F1: `0.3068` (tăng rõ so với smoke trước)
+
+Nhận xét:
+
+- Kết quả này chỉ dùng tham khảo cho giai đoạn huấn luyện.
+- FE-only hiện tập trung vào chất lượng feature/artifact/pipeline thay vì metric model.
+
+## Kết quả ablation (smoke, lịch sử)
 
 - `tabular_only`: accuracy ~0.3687
 - `tabular_plus_sequence`: accuracy ~0.3723
@@ -38,7 +65,24 @@ Nhận xét nhanh:
 - Sequence features có cải thiện nhẹ so với tabular-only trên sample nhỏ.
 - Mức cải thiện chưa đủ để tiệm cận mục tiêu `>= 0.60`.
 
-## Hướng tối ưu theo thứ tự đã chốt (Task 5.6)
+## Hướng tối ưu FE-only hiện tại
+
+1. Ổn định chất lượng transform:
+
+- chuẩn hóa tokenizer SAN, giảm lỗi parsing edge-case.
+- đảm bảo schema train/val không drift khi batch lớn.
+
+2. Củng cố data quality gate:
+
+- theo dõi drop rate `<5 ply` theo split.
+- nếu warning/fail, phải xuất thống kê theo `GameFormat` và `ModelBand`.
+
+3. Sẵn sàng bàn giao cho Model Training phase:
+
+- chốt metadata artifacts (`feature_columns.json`, TF-IDF vocab, SVD components).
+- lock seed và cấu hình để tái lập.
+
+## Hướng tối ưu theo thứ tự đã chốt cho phase train/eval (Deferred - Task 5.6)
 
 1. Move sequence:
 
@@ -65,10 +109,10 @@ Notebook chính:
 
 - `notebooks/feature-engineering/rebaseline/rebaseline_smoke.ipynb`
 
-## Kiểm thử mã
+## Kiểm thử FE
 
 - `tests/test_tabular_transformer.py`
 - `tests/test_move_transformer.py`
 - `tests/test_feature_pipeline_phase4.py`
 
-Tổng: 14 tests pass ở thời điểm cập nhật tài liệu.
+Tổng: 16 tests pass, 1 warning sklearn SVD (runtime warning trên sample nhỏ), cập nhật gần nhất.

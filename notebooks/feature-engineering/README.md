@@ -11,6 +11,11 @@ Mục đích:
 - `pipeline-smoke/`: notebook kiểm tra nhanh pipeline theo sample nhỏ.
 - `rebaseline/`: notebook train/eval/ablation và biểu đồ importance.
 
+Notebook hiện có:
+
+- `rebaseline/rebaseline_smoke.ipynb`: smoke run baseline nhanh.
+- `rebaseline/rebaseline_tuning_iteration2.ipynb`: grid tuning cho vòng tối ưu move-first.
+
 ## Gợi ý workflow
 
 1. Dùng sample nhỏ (ví dụ 3k-10k rows) để chạy nhanh.

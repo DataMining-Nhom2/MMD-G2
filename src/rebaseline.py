@@ -110,9 +110,19 @@ class RebaselineRunner:
         )
         x_val, y_val, _ = self._split_xy(val_df, selected_columns=selected_columns)
 
+        # Cân bằng lớp nhẹ để giảm lệch dự đoán giữa các band ELO.
+        classes, counts = np.unique(y_train, return_counts=True)
+        class_weights = {
+            int(cls): float(len(y_train)) / max(1.0, float(len(classes) * cnt))
+            for cls, cnt in zip(classes, counts)
+        }
+        sample_weight = np.asarray(
+            [class_weights[int(y)] for y in y_train], dtype=np.float32
+        )
+
         num_class = int(max(y_train.max(), y_val.max()) + 1)
         model = self._build_model(num_class=num_class)
-        model.fit(x_train, y_train)
+        model.fit(x_train, y_train, sample_weight=sample_weight)
 
         y_pred = model.predict(x_val)
         acc = float(accuracy_score(y_val, y_pred))
@@ -164,6 +174,9 @@ class RebaselineRunner:
                 "first_move_Nf3",
                 "first_move_c4",
                 "first_move_other",
+                "unique_move_ratio",
+                "capture_ratio",
+                "check_symbol_ratio",
             }
         ]
         tabular_cols = [c for c in non_target if c not in move_cols]

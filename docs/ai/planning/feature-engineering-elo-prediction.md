@@ -12,7 +12,7 @@ description: Phân rã công việc Feature Engineering thành tasks cụ thể 
 - [x] **Milestone 2**: Tabular Features — ECO, GameFormat, BaseTime, NumMoves features OK
 - [x] **Milestone 3**: Move Sequence Features — First-N-moves tokenization, N-gram TF-IDF OK
 - [x] **Milestone 4**: Feature Store — Train/val split, save Parquet features OK
-- [ ] **Milestone 5**: Baseline Re-evaluation — XGBoost với new features, acc ≥ 60% _(Status: in-progress; smoke run hiện tại acc ~0.3723, chưa đạt mục tiêu)_
+- [ ] **Milestone 5**: Baseline Re-evaluation — **Deferred (ngoài phạm vi FE-only hiện tại)**
 
 ## Task Breakdown
 
@@ -57,15 +57,15 @@ description: Phân rã công việc Feature Engineering thành tasks cụ thể 
 - [x] **Task 4.6**: Verify: row counts, null counts, schema consistency _(Done: `verify_schema_consistency()` + stats)_
 - [x] **Task 4.7**: Lock random seed + version hóa artifacts để so sánh công bằng giữa các vòng tối ưu _(Done: seed lock trong `FeaturePipeline.__init__`)_
 
-### Phase 5: Baseline Re-evaluation
+### Phase 5: Baseline Re-evaluation (Deferred)
 
-- [x] **Task 5.1**: Load train features → XGBoost GPU (n*estimators=500, max_depth=8) *(Done: smoke run với XGBoost trên sample train/val)\_
-- [x] **Task 5.2**: Evaluate trên val set: accuracy, macro F1, per-class breakdown _(Done: smoke run trả accuracy + macro F1 + classification report)_
-- [x] **Task 5.3**: Feature importance plot với new features _(Done: `data/features/smoke/feature_importance_top20.png`)_
-- [x] **Task 5.4**: Ablation: tabular-only vs tabular+sequence vs all features _(Done: smoke run có đủ 3 nhánh ablation)_
-- [x] **Task 5.5**: So sánh với EDA baseline (44.18%) → ghi nhận improvement _(Done: smoke run acc ~0.3723, thấp hơn baseline)_
-- [x] **Task 5.6**: Nếu acc <60%, tối ưu theo thứ tự move sequence -> ECO -> metadata _(Done: đã ghi rõ plan tối ưu trong implementation doc)_
-- [x] **Task 5.7**: Document findings và next steps cho Model Training phase _(Done: `docs/ai/implementation/feature-engineering-elo-prediction.md`)_
+- [ ] **Task 5.1**: Load train features -> XGBoost GPU (để Model Training phase xử lý)
+- [ ] **Task 5.2**: Evaluate trên val set: accuracy, macro F1, per-class breakdown
+- [ ] **Task 5.3**: Feature importance plot với new features
+- [ ] **Task 5.4**: Ablation: tabular-only vs tabular+sequence vs all features
+- [ ] **Task 5.5**: So sánh với EDA baseline (44.18%)
+- [ ] **Task 5.6**: Nếu acc <60%, tối ưu theo thứ tự move sequence -> ECO -> metadata
+- [ ] **Task 5.7**: Document findings và next steps cho Model Training phase
 
 ## Dependencies
 
@@ -75,12 +75,12 @@ graph TD
     T1 --> T3["Phase 3: Move Features"]
     T2 --> T4["Phase 4: Feature Store"]
     T3 --> T4
-    T4 --> T5["Phase 5: Re-evaluation"]
+    T4 -. optional .-> T5["Phase 5: Re-evaluation (Deferred)"]
 ```
 
 - Phase 2 và 3 có thể **chạy song song** sau Phase 1
 - Phase 4 cần cả Phase 2 AND Phase 3 hoàn thành
-- Phase 5 cần Phase 4 hoàn thành
+- Phase 5 hiện được tách sang **Model Training phase**, không phải điều kiện hoàn tất FE-only
 
 ## Timeline & Estimates
 
@@ -90,7 +90,7 @@ graph TD
 | 2        | Tabular Features | 1-1.5 giờ   | ECO, GameFormat, numeric   |
 | 3        | Move Features    | 2-3 giờ     | Tokenizer, TF-IDF, entropy |
 | 4        | Feature Store    | 1-2 giờ     | Batch processing 187M rows |
-| 5        | Re-evaluation    | 1 giờ       | XGBoost run + analysis     |
+| 5        | Re-evaluation    | 1 giờ       | Deferred sang Model Training phase |
 | **Tổng** |                  | **6-9 giờ** |                            |
 
 ## Risks & Mitigation
@@ -126,6 +126,7 @@ notebooks/
 - [x] Tích hợp thư viện `python-chess` vào pipeline FE cho parsing SAN và board-state features theo yêu cầu PM
 - [x] Xem xét tạo cấu trúc thư mục `notebooks/` theo nhóm mục tiêu (exploration, feature-test, experiment-log) cho test/thử nghiệm dài hạn _(Done: tạo `notebooks/feature-engineering/` và các thư mục con)_
 - [x] Rule mới: ưu tiên notebook cho test/thử nghiệm, terminal chủ yếu cho automation/full batch
+- [ ] Iteration tối ưu #2 (move-first): n_ply=15, TF-IDF 1-2gram (max_features=500), thêm move meta features (`unique_move_ratio`, `capture_ratio`, `check_symbol_ratio`) — **Deferred trong FE-only, chuyển sang Model Training phase**
 
 ## Acceptance Criteria (Definition of Done)
 
@@ -134,6 +135,5 @@ notebooks/
 - [ ] **No leakage**: Đã verify danh sách features không chứa target-proxy
 - [ ] **Performance**: Pipeline chạy trên 187M rows < 4 giờ
 - [ ] **Data quality gate**: drop rate do `<5 ply` đạt pass <=1.5%; >3% là fail
-- [ ] **Improvement**: XGBoost acc >= 60% (từ 44.18% baseline)
-- [ ] **Evaluation report**: Có cả accuracy và macro F1, pass/fail dựa trên accuracy
-- [ ] **Documentation**: Cập nhật planning doc sau khi hoàn thành
+- [ ] **Feature artifacts**: Sinh đủ train/val features + metadata artifacts với schema nhất quán
+- [ ] **Documentation**: Cập nhật planning doc và FE report khi chốt vòng FE-only

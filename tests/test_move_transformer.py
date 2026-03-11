@@ -21,6 +21,12 @@ class TestMoveTransformer(unittest.TestCase):
         tokens = transformer._tokenize(text, n_ply=6)
         self.assertEqual(tokens, ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"])
 
+    def test_tokenize_removes_annotation_noise(self) -> None:
+        transformer = MoveTransformer(n_ply=10, svd_dim=4)
+        text = "1. e4! e5?! 2. Nf3!! Nc6? 3. Bb5+ a6"
+        tokens = transformer._tokenize(text, n_ply=6)
+        self.assertEqual(tokens, ["e4", "e5", "Nf3", "Nc6", "Bb5+", "a6"])
+
     def test_bigram_generation(self) -> None:
         transformer = MoveTransformer(n_ply=10, svd_dim=4)
         tokens = ["e4", "e5", "Nf3"]
@@ -42,8 +48,8 @@ class TestMoveTransformer(unittest.TestCase):
         )
         out = transformer.transform(series)
 
-        # svd_dim + 10 cột thủ công
-        self.assertEqual(out.shape, (2, 18))
+        # svd_dim + 13 cột thủ công
+        self.assertEqual(out.shape, (2, 21))
 
     def test_board_state_features_castling_detected(self) -> None:
         transformer = MoveTransformer(n_ply=20, svd_dim=4)
@@ -69,7 +75,17 @@ class TestMoveTransformer(unittest.TestCase):
         self.assertIsNotNone(transformer.tfidf_vectorizer)
         # Với dữ liệu ngắn có thể không fit được SVD; test chính là pipeline không lỗi.
         out = transformer.transform(train_series)
-        self.assertEqual(out.shape, (4, 16))  # svd_dim + 10 cột thủ công
+        self.assertEqual(out.shape, (4, 19))  # svd_dim + 13 cột thủ công
+
+    def test_token_meta_features_range(self) -> None:
+        transformer = MoveTransformer(n_ply=10, svd_dim=4)
+        tokens = transformer._tokenize("1. e4 d5 2. exd5 Qxd5 3. Nc3 Qe5+")
+        unique_ratio, capture_ratio, check_ratio = transformer._token_meta_features(
+            tokens
+        )
+        self.assertTrue(0.0 <= unique_ratio <= 1.0)
+        self.assertTrue(0.0 <= capture_ratio <= 1.0)
+        self.assertTrue(0.0 <= check_ratio <= 1.0)
 
 
 if __name__ == "__main__":
