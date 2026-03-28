@@ -1,9 +1,9 @@
-"""Chạy full Feature Pipeline trên sample 30k ván.
+"""Chạy full Feature Pipeline V2 trên sample 30k ván.
 
-Theo Planning Task 4.4:
+Theo Planning V2:
 - Fit TabularTransformer trên toàn bộ 30k (để lấy đủ top-100 ECO vocab).
-- Chạy StockfishTransformer phân tích CPL cho 30k ván.
-- Lưu kết quả ra data/features/sample_30k_features.parquet.
+- Chạy StockfishTransformer V2 phân tích 11 features cho 30k ván.
+- Lưu kết quả ra data/features/sample_30k_features_v2.parquet.
 """
 
 from __future__ import annotations
@@ -16,13 +16,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import polars as pl
 from src.feature_engineering import FeaturePipeline
-from src.feature_config import FeatureConfig, SAMPLE_SOURCE_FILE, SAMPLE_FEATURES_FILE
+from src.feature_config import (
+    FeatureConfig,
+    SAMPLE_SOURCE_FILE,
+    SAMPLE_FEATURES_V2_FILE,
+)
 
 
 def main() -> None:
     t0 = time.time()
     print(f"{'═' * 60}")
-    print("  CHẠY FEATURE PIPELINE TRÊN SAMPLE 30K")
+    print("  CHẠY FEATURE PIPELINE V2 TRÊN SAMPLE 30K")
+    print("  (11 features: Nhóm A + B + C)")
     print(f"{'─' * 60}")
 
     # Bước 1: Load sample
@@ -43,14 +48,14 @@ def main() -> None:
     pipeline.fit(df)
     print(f"  ECO vocab size: {len(pipeline.tabular.eco_vocab)}")
 
-    # Bước 4: Transform (bao gồm Stockfish CPL — tốn ~1.4 giờ)
-    print(f"\n  Đang transform {df.height} ván...")
-    print(f"  (Ước tính: ~{df.height * 0.17 / 60:.0f} phút)")
+    # Bước 4: Transform (bao gồm Stockfish V2 — ước tính ~25-30 phút)
+    print(f"\n  Đang transform {df.height} ván (V2: WDL + PV + Phase CPL)...")
+    print(f"  (Ước tính: ~{df.height * 0.05 / 60:.0f} phút)")
     result = pipeline.transform(df)
 
-    # Bước 5: Lưu kết quả
-    SAMPLE_FEATURES_FILE.parent.mkdir(parents=True, exist_ok=True)
-    result.write_parquet(str(SAMPLE_FEATURES_FILE), compression="zstd")
+    # Bước 5: Lưu kết quả V2 (KHÔNG ghi đè file V1)
+    SAMPLE_FEATURES_V2_FILE.parent.mkdir(parents=True, exist_ok=True)
+    result.write_parquet(str(SAMPLE_FEATURES_V2_FILE), compression="zstd")
 
     # Bước 6: Lưu metadata
     feature_cols = [c for c in result.columns if c != "ModelBand"]
@@ -58,13 +63,21 @@ def main() -> None:
 
     elapsed = time.time() - t0
     print(f"\n{'═' * 60}")
-    print(f"  ✅ HOÀN THÀNH!")
-    print(f"  Output: {SAMPLE_FEATURES_FILE}")
+    print(f"  ✅ HOÀN THÀNH PIPELINE V2!")
+    print(f"  Output: {SAMPLE_FEATURES_V2_FILE}")
     print(f"  Rows: {result.height}, Cols: {result.width}")
     print(f"  Thời gian: {elapsed/60:.1f} phút ({elapsed/3600:.1f} giờ)")
     print(f"\n  Schema:")
     for name, dtype in result.schema.items():
         print(f"    {name}: {dtype}")
+
+    # Kiểm tra NaN distribution
+    print(f"\n  NaN distribution:")
+    for col in ["opening_cpl", "midgame_cpl", "endgame_cpl"]:
+        if col in result.columns:
+            nan_count = result[col].is_nan().sum()
+            nan_pct = nan_count / result.height * 100
+            print(f"    {col}: {nan_count} NaN ({nan_pct:.1f}%)")
     print(f"{'═' * 60}")
 
 

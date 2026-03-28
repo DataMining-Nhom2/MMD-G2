@@ -1,14 +1,14 @@
 """Pipeline Feature Engineering cho bài toán dự đoán ELO theo ModelBand.
 
-Phiên bản mới (Stockfish CPL):
+Phiên bản V2 (Stockfish CPL — 11 Features):
 - Load dữ liệu sample 30k từ Parquet.
 - Transform tabular features (ECO, NumMoves — KHÔNG có GameFormat/BaseTime/Increment).
-- Transform engine features bằng Stockfish CPL (thay thế hoàn toàn TF-IDF/SVD cũ).
+- Transform engine features bằng Stockfish V2: 11 features theo 3 nhóm A/B/C.
 
-Thay đổi so với phiên bản cũ:
-- Loại bỏ hoàn toàn: MoveTransformer, TfidfVectorizer, TruncatedSVD
-- Loại bỏ hoàn toàn: GameFormat, BaseTime, Increment khỏi TabularTransformer
-- Thêm mới: StockfishTransformer (CPL, Blunders, Mistakes, Inaccuracies)
+Thay đổi V2 so với V1:
+- Nhóm A: Tỷ lệ hóa blunder/mistake/inaccuracy (thay count thô).
+- Nhóm B (MỚI): Phân giai đoạn CPL — opening/midgame/endgame.
+- Nhóm C (MỚI): WDL probability loss + PV[0] best move match rate.
 """
 
 from __future__ import annotations
@@ -30,6 +30,8 @@ from src.feature_config import (
     MODEL_BAND_LABEL_TO_ID,
     MODEL_BINS,
     TARGET_SOURCE_COLUMNS,
+    OPENING_END_MOVE,
+    MIDGAME_END_MOVE,
 )
 
 
@@ -158,8 +160,8 @@ class TabularTransformer:
 
 
 # ╔══════════════════════════════════════════════════════════╗
-# ║                 STOCKFISH TRANSFORMER                    ║
-# ║  (MỚI — thay thế hoàn toàn MoveTransformer cũ)          ║
+# ║              STOCKFISH TRANSFORMER V2                    ║
+# ║  (11 Features: Nhóm A / B / C)                          ║
 # ╚══════════════════════════════════════════════════════════╝
 
 
@@ -169,23 +171,42 @@ MISTAKE_THRESHOLD = 100
 INACCURACY_THRESHOLD = 50
 
 
+def _default_features() -> dict[str, float]:
+    """Trả về dict features mặc định khi ván không phân tích được."""
+    return {
+        # Nhóm A
+        "avg_cpl": 0.0,
+        "cpl_std": 0.0,
+        "blunder_rate": 0.0,
+        "mistake_rate": 0.0,
+        "inaccuracy_rate": 0.0,
+        # Nhóm B
+        "opening_cpl": float("nan"),
+        "midgame_cpl": float("nan"),
+        "endgame_cpl": float("nan"),
+        # Nhóm C
+        "avg_wdl_loss": 0.0,
+        "max_wdl_loss": 0.0,
+        "best_move_match_rate": 0.0,
+    }
+
+
 def _stockfish_worker_chunk(args: tuple[list[str], str, int, int, int]) -> list[dict[str, float]]:
+    """Worker chạy trong subprocess: phân tích một chunk ván bằng Stockfish V2."""
     chunk_san, engine_path, depth, threads, hash_mb = args
     import chess.engine
-    
-    # Khởi tạo instance dùng để gọi analyze_game
+
     sf = StockfishTransformer(engine_path, depth, threads, hash_mb)
     engine = chess.engine.SimpleEngine.popen_uci(engine_path)
     engine.configure({"Threads": threads, "Hash": hash_mb})
-    
+
     results = []
     try:
         for san in chunk_san:
-            # Catch lỗi từng ván để tránh sập cả chunk
             try:
                 res = sf.analyze_game(san, engine)
             except Exception:
-                res = {col: 0.0 for col in sf.OUTPUT_COLUMNS}
+                res = _default_features()
             results.append(res)
     finally:
         engine.quit()
@@ -193,26 +214,41 @@ def _stockfish_worker_chunk(args: tuple[list[str], str, int, int, int]) -> list[
 
 
 class StockfishTransformer:
-    """Phân tích chất lượng nước đi bằng Stockfish engine.
+    """Phân tích chất lượng nước đi bằng Stockfish engine — Phiên bản V2.
 
-    Thay thế hoàn toàn MoveTransformer (TF-IDF/SVD) cũ.
-    Trích xuất features dựa trên Centipawn Loss (CPL):
-    - avg_cpl: CPL trung bình toàn ván
-    - blunder_count: Số nước mất >300cp
-    - mistake_count: Số nước mất 100-300cp
-    - inaccuracy_count: Số nước mất 50-100cp
-    - max_cpl: CPL tệ nhất
-    - cpl_std: Độ lệch chuẩn CPL (tính ổn định)
+    Trích xuất 11 features theo 3 nhóm:
+
+    Nhóm A — Tỷ lệ hóa toàn ván:
+        avg_cpl, cpl_std,
+        blunder_rate, mistake_rate, inaccuracy_rate
+
+    Nhóm B — Phân giai đoạn CPL:
+        opening_cpl  (nước 1-10)
+        midgame_cpl  (nước 11-30, NaN nếu ván ngắn)
+        endgame_cpl  (nước 31+,   NaN nếu ván ngắn)
+
+    Nhóm C — WDL & PV Match:
+        avg_wdl_loss        (trung bình mất win-probability)
+        max_wdl_loss        (mất nhiều nhất trong 1 nước)
+        best_move_match_rate (tỷ lệ đi trùng PV[0] của engine)
     """
 
-    # Tên các cột output
+    # Tên các cột output V2 (11 features)
     OUTPUT_COLUMNS = [
+        # Nhóm A
         "avg_cpl",
-        "blunder_count",
-        "mistake_count",
-        "inaccuracy_count",
-        "max_cpl",
         "cpl_std",
+        "blunder_rate",
+        "mistake_rate",
+        "inaccuracy_rate",
+        # Nhóm B
+        "opening_cpl",
+        "midgame_cpl",
+        "endgame_cpl",
+        # Nhóm C
+        "avg_wdl_loss",
+        "max_wdl_loss",
+        "best_move_match_rate",
     ]
 
     def __init__(
@@ -235,38 +271,52 @@ class StockfishTransformer:
 
     @staticmethod
     def _score_to_cp(score: chess.engine.PovScore, turn: chess.Color) -> float | None:
-        """Chuyển PovScore về centipawns từ góc nhìn bên đi.
+        """Chuyển PovScore về centipawns từ góc nhìn của bên vừa đi.
 
         Trả về None nếu là mate score (không tính CPL).
         """
         cp = score.pov(turn).score()
         return float(cp) if cp is not None else None
 
+    @staticmethod
+    def _wdl_win_prob(score: chess.engine.PovScore, turn: chess.Color) -> float | None:
+        """Lấy xác suất thắng từ WDL của Stockfish NNUE, normalize về [0, 1].
+
+        Trả về None nếu WDL không khả dụng.
+        """
+        try:
+            wdl = score.pov(turn).wdl()
+            return wdl.wins / 1000.0
+        except Exception:
+            return None
+
     def analyze_game(
         self, moves_san: str, engine: chess.engine.SimpleEngine
     ) -> dict[str, float]:
-        """Phân tích 1 ván cờ, trả về dict features CPL.
+        """Phân tích 1 ván cờ, trả về dict 11 features V2.
 
         Quy trình:
-        1. Parse từng nước SAN bằng python-chess
-        2. Trước mỗi nước, gọi engine.analyse() để lấy eval tối ưu
-        3. Sau khi đi nước, gọi engine.analyse() lại để lấy eval mới
-        4. CPL = |eval_trước - eval_sau| (từ góc nhìn bên vừa đi)
+        1. Phân tích từng nước: gọi engine.analyse() trước khi đi nước.
+        2. Thu thập: CPL, WDL win-prob trước, PV[0] (best move).
+        3. So sánh nước thực tế vs PV[0] để tính best_move_match.
+        4. Thực hiện nước đi, lấy WDL win-prob sau nước.
+        5. Tính WDL loss = win_prob_before - win_prob_after.
+        6. Tổng hợp 11 features theo 3 nhóm A/B/C.
         """
         board = chess.Board()
-        cpls: list[float] = []
+        cpls: list[float] = []          # CPL từng nước (có thể là NaN)
+        wdl_losses: list[float] = []    # Win-prob loss từng nước
+        best_move_matches: int = 0      # Số nước trùng PV[0]
+        valid_moves: int = 0            # Số nước đi hợp lệ được phân tích
 
         # Parse chuỗi SAN thành danh sách nước đi
         raw_tokens = (moves_san or "").split()
-        san_moves: list[str] = []
-        for token in raw_tokens:
-            # Bỏ qua số thứ tự nước (1. 2. 3... hoặc 1... )
-            if token.endswith(".") or token in ("1-0", "0-1", "1/2-1/2", "*"):
-                continue
-            san_moves.append(token)
+        san_moves: list[str] = [
+            t for t in raw_tokens
+            if not t.endswith(".") and t not in ("1-0", "0-1", "1/2-1/2", "*")
+        ]
 
         limit = chess.engine.Limit(depth=self.depth)
-        prev_eval: float | None = None
 
         for san in san_moves:
             try:
@@ -277,59 +327,106 @@ class StockfishTransformer:
 
             turn = board.turn  # Bên sắp đi
 
-            # Eval TRƯỚC khi đi nước
-            if prev_eval is None:
-                try:
-                    info = engine.analyse(board, limit)
-                    prev_eval = self._score_to_cp(info["score"], turn)
-                except Exception:
-                    prev_eval = None
+            # ── Phân tích TRƯỚC khi đi nước ──────────────────────────
+            try:
+                info_before = engine.analyse(
+                    board, limit, info=chess.engine.INFO_ALL
+                )
+                prev_cp = self._score_to_cp(info_before["score"], turn)
+                prev_win = self._wdl_win_prob(info_before["score"], turn)
+                best_move = info_before["pv"][0] if info_before.get("pv") else None
+            except Exception:
+                prev_cp = None
+                prev_win = None
+                best_move = None
 
-            # Thực hiện nước đi
+            # ── So sánh với nước thực tế (Nhóm C: PV Match) ─────────
+            if best_move is not None and best_move == move:
+                best_move_matches += 1
+
+            # ── Thực hiện nước đi ─────────────────────────────────────
             board.push(move)
+            valid_moves += 1
 
-            # Eval SAU khi đi nước (từ góc đối thủ, rồi lật dấu)
+            # ── Phân tích SAU khi đi nước ────────────────────────────
             try:
-                info = engine.analyse(board, limit)
-                # Lấy eval từ góc bên VỪA ĐI (không phải bên đang đi)
-                post_eval = self._score_to_cp(info["score"], turn)
+                info_after = engine.analyse(board, limit, info=chess.engine.INFO_ALL)
+                post_cp = self._score_to_cp(info_after["score"], turn)
+                post_win = self._wdl_win_prob(info_after["score"], turn)
             except Exception:
-                post_eval = None
+                post_cp = None
+                post_win = None
 
-            # Tính CPL cho nước này
-            if prev_eval is not None and post_eval is not None:
-                cpl = max(0.0, prev_eval - post_eval)
-                cpls.append(cpl)
+            # ── Tính CPL (Nhóm A & B) ────────────────────────────────
+            if prev_cp is not None and post_cp is not None:
+                cpls.append(max(0.0, prev_cp - post_cp))
+            else:
+                # Gán NaN để giữ đúng mapping index nước đi → CPL
+                cpls.append(float("nan"))
 
-            # Cập nhật eval cho nước tiếp theo (từ góc bên đang đi)
-            try:
-                prev_eval = self._score_to_cp(info["score"], board.turn)
-            except Exception:
-                prev_eval = None
+            # ── Tính WDL loss (Nhóm C) ───────────────────────────────
+            if prev_win is not None and post_win is not None:
+                wdl_losses.append(max(0.0, prev_win - post_win))
 
-        # Tổng hợp features
-        if not cpls:
-            return {
-                "avg_cpl": 0.0,
-                "blunder_count": 0.0,
-                "mistake_count": 0.0,
-                "inaccuracy_count": 0.0,
-                "max_cpl": 0.0,
-                "cpl_std": 0.0,
-            }
+        # ── Trường hợp ván không có nước đi hợp lệ ───────────────────
+        if valid_moves == 0:
+            return _default_features()
 
-        arr = np.array(cpls, dtype=np.float32)
+        # ── Tổng hợp Nhóm A: Tỷ lệ hóa ──────────────────────────────
+        arr = np.array(cpls, dtype=np.float32)          # có thể chứa NaN
+        arr_valid = arr[~np.isnan(arr)]                  # chỉ lấy giá trị hợp lệ
+        n = float(valid_moves)
+
+        if arr_valid.size > 0:
+            avg_cpl = float(np.mean(arr_valid))
+            cpl_std = float(np.std(arr_valid))
+            blunder_rate = float(np.sum(arr_valid > BLUNDER_THRESHOLD)) / n
+            mistake_rate = float(
+                np.sum((arr_valid > MISTAKE_THRESHOLD) & (arr_valid <= BLUNDER_THRESHOLD))
+            ) / n
+            inaccuracy_rate = float(
+                np.sum((arr_valid > INACCURACY_THRESHOLD) & (arr_valid <= MISTAKE_THRESHOLD))
+            ) / n
+        else:
+            avg_cpl = cpl_std = blunder_rate = mistake_rate = inaccuracy_rate = 0.0
+
+        # ── Tổng hợp Nhóm B: Phân giai đoạn ─────────────────────────
+        opening_slice = arr[:OPENING_END_MOVE]
+        opening_valid = opening_slice[~np.isnan(opening_slice)]
+        midgame_slice = arr[OPENING_END_MOVE:MIDGAME_END_MOVE]
+        midgame_valid = midgame_slice[~np.isnan(midgame_slice)]
+        endgame_slice = arr[MIDGAME_END_MOVE:]
+        endgame_valid = endgame_slice[~np.isnan(endgame_slice)]
+
+        opening_cpl = float(np.mean(opening_valid)) if opening_valid.size > 0 else float("nan")
+        midgame_cpl = float(np.mean(midgame_valid)) if midgame_valid.size > 0 else float("nan")
+        endgame_cpl = float(np.mean(endgame_valid)) if endgame_valid.size > 0 else float("nan")
+
+        # ── Tổng hợp Nhóm C: WDL & PV Match ─────────────────────────
+        if wdl_losses:
+            wdl_arr = np.array(wdl_losses, dtype=np.float32)
+            avg_wdl_loss = float(np.mean(wdl_arr))
+            max_wdl_loss = float(np.max(wdl_arr))
+        else:
+            avg_wdl_loss = max_wdl_loss = 0.0
+
+        best_move_match_rate = best_move_matches / n
+
         return {
-            "avg_cpl": float(np.mean(arr)),
-            "blunder_count": float(np.sum(arr > BLUNDER_THRESHOLD)),
-            "mistake_count": float(
-                np.sum((arr > MISTAKE_THRESHOLD) & (arr <= BLUNDER_THRESHOLD))
-            ),
-            "inaccuracy_count": float(
-                np.sum((arr > INACCURACY_THRESHOLD) & (arr <= MISTAKE_THRESHOLD))
-            ),
-            "max_cpl": float(np.max(arr)),
-            "cpl_std": float(np.std(arr)),
+            # Nhóm A
+            "avg_cpl": avg_cpl,
+            "cpl_std": cpl_std,
+            "blunder_rate": blunder_rate,
+            "mistake_rate": mistake_rate,
+            "inaccuracy_rate": inaccuracy_rate,
+            # Nhóm B
+            "opening_cpl": opening_cpl,
+            "midgame_cpl": midgame_cpl,
+            "endgame_cpl": endgame_cpl,
+            # Nhóm C
+            "avg_wdl_loss": avg_wdl_loss,
+            "max_wdl_loss": max_wdl_loss,
+            "best_move_match_rate": best_move_match_rate,
         }
 
     def transform(self, moves_series: pl.Series) -> pl.DataFrame:
@@ -339,34 +436,33 @@ class StockfishTransformer:
         """
         import os
         from concurrent.futures import ProcessPoolExecutor
-        
+
         moves_list = [str(x) for x in moves_series.to_list()]
-        
+
         # Chia chunk size 100 ván/chunk
         chunk_size = 100
         chunks = [moves_list[i:i + chunk_size] for i in range(0, len(moves_list), chunk_size)]
-        
+
         args_list = [
             (chunk, self.engine_path, self.depth, self.threads, self.hash_mb)
             for chunk in chunks
         ]
-        
-        # Lấy số cores (để lại 1 core cho OS nếu có thể)
+
+        # Lấy số cores (để lại 2 core cho OS)
         max_workers = max(1, os.cpu_count() - 2) if os.cpu_count() else 4
-        
+
         results: list[dict[str, float]] = []
-        
+
         print(f"\n  Khởi tạo {max_workers} tiến trình Stockfish chạy song song...")
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            # map guarantees order
             for chunk_res in tqdm(
-                executor.map(_stockfish_worker_chunk, args_list), 
-                total=len(args_list), 
-                desc="Stockfish Parallel CPL", 
-                unit="chunk"
+                executor.map(_stockfish_worker_chunk, args_list),
+                total=len(args_list),
+                desc="Stockfish Parallel V2",
+                unit="chunk",
             ):
                 results.extend(chunk_res)
-                
+
         return pl.DataFrame(results, schema={
             col: pl.Float32 for col in self.OUTPUT_COLUMNS
         })
@@ -381,7 +477,7 @@ class FeaturePipeline:
     """Pipeline tổng hợp cho Feature Engineering.
 
     Kết hợp TabularTransformer (ECO + NumMoves) với
-    StockfishTransformer (CPL) để tạo feature matrix cuối cùng.
+    StockfishTransformer V2 (11 features) để tạo feature matrix cuối cùng.
     """
 
     def __init__(self, config: FeatureConfig | None = None) -> None:
@@ -457,7 +553,7 @@ class FeaturePipeline:
     def transform(self, df: pl.DataFrame) -> pl.DataFrame:
         """Transform DataFrame đầu vào thành feature matrix.
 
-        Kết hợp: Target + Tabular (ECO, NumMoves) + Engine (CPL, Blunders).
+        Kết hợp: Target + Tabular (ECO, NumMoves) + Engine V2 (11 features).
         """
         df = self.ensure_target_column(df)
 
@@ -467,7 +563,7 @@ class FeaturePipeline:
         # Tabular features (ECO + NumMoves)
         tabular_df = self.tabular.transform(df)
 
-        # Stockfish features (CPL)
+        # Stockfish features V2 (11 features)
         engine_df = self.stockfish.transform(df["Moves"])
 
         # Target

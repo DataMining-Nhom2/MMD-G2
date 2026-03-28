@@ -54,10 +54,15 @@ INPUT_COLUMNS_REQUIRED = (
 # Cột cần cho target encoder
 TARGET_SOURCE_COLUMNS = ("ModelBand", "EloAvg")
 
+# ── Cấu hình giai đoạn ván cờ (V2) ──────────────────────────
+OPENING_END_MOVE = 10   # Nước 1-10: khai cuộc
+MIDGAME_END_MOVE = 30   # Nước 11-30: trung cuộc, 31+: tàn cuộc
+
 # ── Đường dẫn mặc định ─────────────────────────────────────
 SAMPLE_SOURCE_FILE = DATA_PROCESSED / "sample_30k.parquet"
 FEATURES_DIR = DATA_DIR / "features"
 SAMPLE_FEATURES_FILE = FEATURES_DIR / "sample_30k_features.parquet"
+SAMPLE_FEATURES_V2_FILE = FEATURES_DIR / "sample_30k_features_v2.parquet"
 FEATURE_COLUMNS_FILE = FEATURES_DIR / "feature_columns.json"
 
 

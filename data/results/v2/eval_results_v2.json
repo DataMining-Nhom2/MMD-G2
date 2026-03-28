@@ -1,0 +1,33 @@
+{
+  "v1_accuracy": 44.24,
+  "ablation": [
+    {
+      "config": "A: Tabular Only",
+      "accuracy_mean": 34.4,
+      "accuracy_std": 0.43,
+      "f1_mean": 32.16,
+      "f1_std": 0.43
+    },
+    {
+      "config": "B: Tabular + Nhóm A",
+      "accuracy_mean": 44.39,
+      "accuracy_std": 0.1,
+      "f1_mean": 43.16,
+      "f1_std": 0.18
+    },
+    {
+      "config": "C: Tabular + A + B",
+      "accuracy_mean": 46.47,
+      "accuracy_std": 0.4,
+      "f1_mean": 45.56,
+      "f1_std": 0.48
+    },
+    {
+      "config": "D: Full V2 (A+B+C)",
+      "accuracy_mean": 47.59,
+      "accuracy_std": 0.53,
+      "f1_mean": 46.79,
+      "f1_std": 0.63
+    }
+  ]
+}

@@ -84,14 +84,14 @@ graph TD
 
 ## Timeline & Estimates
 
-| Phase    | Công việc        | Effort      | Ghi chú                    |
-| -------- | ---------------- | ----------- | -------------------------- |
-| 1        | Pipeline Setup   | 1-1.5 giờ   | Module structure + config  |
-| 2        | Tabular Features | 1-1.5 giờ   | ECO, GameFormat, numeric   |
-| 3        | Move Features    | 2-3 giờ     | Tokenizer, TF-IDF, entropy |
-| 4        | Feature Store    | 1-2 giờ     | Batch processing 187M rows |
+| Phase    | Công việc        | Effort      | Ghi chú                            |
+| -------- | ---------------- | ----------- | ---------------------------------- |
+| 1        | Pipeline Setup   | 1-1.5 giờ   | Module structure + config          |
+| 2        | Tabular Features | 1-1.5 giờ   | ECO, GameFormat, numeric           |
+| 3        | Move Features    | 2-3 giờ     | Tokenizer, TF-IDF, entropy         |
+| 4        | Feature Store    | 1-2 giờ     | Batch processing 187M rows         |
 | 5        | Re-evaluation    | 1 giờ       | Deferred sang Model Training phase |
-| **Tổng** |                  | **6-9 giờ** |                            |
+| **Tổng** |                  | **6-9 giờ** |                                    |
 
 ## Risks & Mitigation
 
