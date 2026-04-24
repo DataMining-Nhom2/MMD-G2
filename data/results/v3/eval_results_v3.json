@@ -1,0 +1,85 @@
+{
+  "model": "XGBRegressor",
+  "version": "V3",
+  "target": "EloAvg (regression liên tục)",
+  "data": {
+    "features_file": "data/features/sample_30k_features_v2.parquet",
+    "raw_data_file": "data/processed/sample_30k.parquet",
+    "n_samples": 30000,
+    "n_features": 117,
+    "target_range": [
+      406.0,
+      3084.0
+    ],
+    "target_mean": 1588.1,
+    "target_std": 536.5
+  },
+  "params": {
+    "objective": "reg:squarederror",
+    "eval_metric": "mae",
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "n_estimators": 300,
+    "random_state": 42,
+    "n_jobs": -1
+  },
+  "regression_metrics": {
+    "mae_mean": 247.81,
+    "mae_std": 2.06,
+    "rmse_mean": 315.78,
+    "rmse_std": 2.3,
+    "r2_mean": 0.6535,
+    "r2_std": 0.0061
+  },
+  "ablation": [
+    {
+      "config": "A: Tabular Only",
+      "mae_mean": 372.4,
+      "mae_std": 1.49,
+      "rmse_mean": 452.9,
+      "rmse_std": 2.42,
+      "r2_mean": 0.2872,
+      "r2_std": 0.0102
+    },
+    {
+      "config": "B: Tabular + Nhóm A",
+      "mae_mean": 273.76,
+      "mae_std": 2.21,
+      "rmse_mean": 343.43,
+      "rmse_std": 2.5,
+      "r2_mean": 0.5901,
+      "r2_std": 0.0065
+    },
+    {
+      "config": "C: Tabular + A + B",
+      "mae_mean": 260.13,
+      "mae_std": 1.82,
+      "rmse_mean": 329.58,
+      "rmse_std": 2.06,
+      "r2_mean": 0.6225,
+      "r2_std": 0.0063
+    },
+    {
+      "config": "D: Full V2 (A+B+C)",
+      "mae_mean": 247.81,
+      "mae_std": 2.06,
+      "rmse_mean": 315.78,
+      "rmse_std": 2.3,
+      "r2_mean": 0.6535,
+      "r2_std": 0.0061
+    }
+  ],
+  "mae_by_band": {
+    "Beginner": 276.26,
+    "Intermediate": 243.84,
+    "Advanced": 227.33,
+    "Expert": 239.91,
+    "Master": 251.74
+  },
+  "classification_comparison": {
+    "accuracy": 43.57,
+    "macro_f1": 44.59,
+    "v2_accuracy": 47.59,
+    "delta": -4.02
+  }
+}
