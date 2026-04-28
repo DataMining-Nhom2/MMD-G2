@@ -1,6 +1,7 @@
 /data/raw/
 /data/processed/
 /.tmp
+src/.tmp
 /data/features
 
 # Byte-compiled / optimized / DLL files
