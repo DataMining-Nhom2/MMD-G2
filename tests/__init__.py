@@ -1,1 +1,1 @@
-# MMD-G2 Chess Game Server Tests
+# tests/__init__.py
