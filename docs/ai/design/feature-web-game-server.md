@@ -49,28 +49,28 @@ flowchart TD
 
 ### Components và Trách nhiệm
 
-| Component | Trách nhiệm | File |
-|-----------|-------------|------|
-| `React Frontend` | SPA router, Lobby, GameBoard, Clock UI, ResultModal, MoveHistory | `client/src/` |
-| `Socket.IO Client` | Kết nối WebSocket, emit/receive events, auto-reconnect | `client/src/socket.js` |
-| `Node.js Backend` | HTTP server, serve React build, route logic | `server/index.js` |
-| `Room Manager` | Tạo/xóa phòng, gán màu quân, track players, handle disconnect/reconnect | `server/roomManager.js` |
-| `Game Logic` | Validate move, detect game over, build PGN | `server/gameLogic.js` |
-| `Clock Manager` | Server-side timer: start/stop/switch, record timeSpent | `server/clockManager.js` |
-| `AI Client` | Gọi HTTP POST sang AI Engine, handle timeout/fallback | `server/aiClient.js` |
+| Component          | Trách nhiệm                                                             | File                     |
+| ------------------ | ----------------------------------------------------------------------- | ------------------------ |
+| `React Frontend`   | SPA router, Lobby, GameBoard, Clock UI, ResultModal, MoveHistory        | `client/src/`            |
+| `Socket.IO Client` | Kết nối WebSocket, emit/receive events, auto-reconnect                  | `client/src/socket.js`   |
+| `Node.js Backend`  | HTTP server, serve React build, route logic                             | `server/index.js`        |
+| `Room Manager`     | Tạo/xóa phòng, gán màu quân, track players, handle disconnect/reconnect | `server/roomManager.js`  |
+| `Game Logic`       | Validate move, detect game over, build PGN                              | `server/gameLogic.js`    |
+| `Clock Manager`    | Server-side timer: start/stop/switch, record timeSpent                  | `server/clockManager.js` |
+| `AI Client`        | Gọi HTTP POST sang AI Engine, handle timeout/fallback                   | `server/aiClient.js`     |
 
 ### Technology Stack
 
-| Layer | Công nghệ | Phiên bản | Lý do |
-|-------|-----------|-----------|-------|
-| **Frontend Framework** | React + CRA | 18.3.1 | Giữ nguyên codebase hiện tại, không migrate Vite |
-| **UI Library** | MUI v5 | 5.15.17 | Đã dùng, giữ nguyên |
-| **Chess Board** | react-chessboard | 4.5.0 | Đã dùng, giữ nguyên. Dùng `onPromotion` callback để auto-promote Queen |
-| **Chess Logic** | chess.js | 1.0.0-beta.8 | Đã dùng, giữ nguyên |
-| **Real-time** | Socket.IO | 4.7.5 | Đã dùng, giữ nguyên |
-| **Backend** | Node.js + Express | Latest | Đã có, mở rộng |
-| **HTTP Client** | native `fetch` | Built-in | Gọi AI Engine API |
-| **Routing** | react-router-dom | v6 | SPA navigation với `/room/:roomId` |
+| Layer                  | Công nghệ         | Phiên bản    | Lý do                                                                  |
+| ---------------------- | ----------------- | ------------ | ---------------------------------------------------------------------- |
+| **Frontend Framework** | React + CRA       | 18.3.1       | Giữ nguyên codebase hiện tại, không migrate Vite                       |
+| **UI Library**         | MUI v5            | 5.15.17      | Đã dùng, giữ nguyên                                                    |
+| **Chess Board**        | react-chessboard  | 4.5.0        | Đã dùng, giữ nguyên. Dùng `onPromotion` callback để auto-promote Queen |
+| **Chess Logic**        | chess.js          | 1.0.0-beta.8 | Đã dùng, giữ nguyên                                                    |
+| **Real-time**          | Socket.IO         | 4.7.5        | Đã dùng, giữ nguyên                                                    |
+| **Backend**            | Node.js + Express | Latest       | Đã có, mở rộng                                                         |
+| **HTTP Client**        | native `fetch`    | Built-in     | Gọi AI Engine API                                                      |
+| **Routing**            | react-router-dom  | v6           | SPA navigation với `/room/:roomId`                                     |
 
 ---
 
@@ -195,59 +195,59 @@ const aiErrorResponse = {
 
 #### a) Kết nối & Phòng chơi
 
-| Event | Direction | Payload | Mô tả |
-|-------|-----------|---------|-------|
-| `create_room` | Client → Server | `{}` | Yêu cầu tạo phòng mới |
-| `room_created` | Server → Client | `{ roomId: string, sessionToken: string }` | Trả mã phòng + session token, hiển thị link mời |
-| `join_room` | Client → Server | `{ roomId: string }` | Yêu cầu vào phòng |
-| `joined` | Server → Client | `{ color: "white"\|"black", roomId, fen, sessionToken, whiteTime, blackTime, moves, clockTimes }` | Xác nhận đã vào, gán màu quân, gửi full game state |
-| `opponent_joined` | Server → Client | `{ fen, whiteTime, blackTime }` | Đối thủ đã vào, bắt đầu ván đấu |
-| `room_full` | Server → Client | `{ message: string }` | Từ chối nếu phòng đã đầy |
-| `room_not_found` | Server → Client | `{ message: string }` | Phòng không tồn tại |
+| Event             | Direction       | Payload                                                                                           | Mô tả                                              |
+| ----------------- | --------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `create_room`     | Client → Server | `{}`                                                                                              | Yêu cầu tạo phòng mới                              |
+| `room_created`    | Server → Client | `{ roomId: string, sessionToken: string }`                                                        | Trả mã phòng + session token, hiển thị link mời    |
+| `join_room`       | Client → Server | `{ roomId: string }`                                                                              | Yêu cầu vào phòng                                  |
+| `joined`          | Server → Client | `{ color: "white"\|"black", roomId, fen, sessionToken, whiteTime, blackTime, moves, clockTimes }` | Xác nhận đã vào, gán màu quân, gửi full game state |
+| `opponent_joined` | Server → Client | `{ fen, whiteTime, blackTime }`                                                                   | Đối thủ đã vào, bắt đầu ván đấu                    |
+| `room_full`       | Server → Client | `{ message: string }`                                                                             | Từ chối nếu phòng đã đầy                           |
+| `room_not_found`  | Server → Client | `{ message: string }`                                                                             | Phòng không tồn tại                                |
 
 #### b) Trong ván đấu
 
-| Event | Direction | Payload | Mô tả |
-|-------|-----------|---------|-------|
-| `make_move` | Client → Server | `{ move: string, fen: string }` | Người chơi gửi nước đi. `move` = SAN (VD: "e4", "Nf3", "O-O", "e7e8q") |
-| `move_made` | Server → Opponent | `{ move: string, san: string, fen: string, whiteTime: number, blackTime: number, activeSide: string }` | Broadcast nước đi + cập nhật đồng hồ |
-| `clock_update` | Server → Both | `{ whiteTime: number, blackTime: number, activeSide: string }` | Sync đồng hồ định kỳ mỗi 1 giây |
-| `resign` | Client → Server | `{}` | Người chơi xin thua |
-| `exit_room` | Client → Server | `{}` | Người chơi chủ động thoát phòng |
-| `opponent_left` | Server → Client | `{}` | Đối thủ đã thoát phòng |
-| `invalid_move` | Server → Client | `{ message: string }` | Nước đi không hợp lệ |
+| Event           | Direction         | Payload                                                                                                | Mô tả                                                                  |
+| --------------- | ----------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `make_move`     | Client → Server   | `{ move: string, fen: string }`                                                                        | Người chơi gửi nước đi. `move` = SAN (VD: "e4", "Nf3", "O-O", "e7e8q") |
+| `move_made`     | Server → Opponent | `{ move: string, san: string, fen: string, whiteTime: number, blackTime: number, activeSide: string }` | Broadcast nước đi + cập nhật đồng hồ                                   |
+| `clock_update`  | Server → Both     | `{ whiteTime: number, blackTime: number, activeSide: string }`                                         | Sync đồng hồ định kỳ mỗi 1 giây                                        |
+| `resign`        | Client → Server   | `{}`                                                                                                   | Người chơi xin thua                                                    |
+| `exit_room`     | Client → Server   | `{}`                                                                                                   | Người chơi chủ động thoát phòng                                        |
+| `opponent_left` | Server → Client   | `{}`                                                                                                   | Đối thủ đã thoát phòng                                                 |
+| `invalid_move`  | Server → Client   | `{ message: string }`                                                                                  | Nước đi không hợp lệ                                                   |
 
 #### c) Kết thúc ván
 
-| Event | Direction | Payload | Mô tả |
-|-------|-----------|---------|-------|
-| `game_over` | Server → Both | `{ result: string, reason: string }` | Thông báo ván kết thúc |
-| `ai_loading` | Server → Both | `{}` | Báo hiện overlay Loading |
-| `ai_result` | Server → Both | `{ white_elo, black_elo, eco, stats, explanation }` | Trả kết quả AI, hiện Result Modal |
-| `ai_error` | Server → Both | `{ message: string }` | AI Engine lỗi, hiện fallback |
+| Event        | Direction     | Payload                                             | Mô tả                             |
+| ------------ | ------------- | --------------------------------------------------- | --------------------------------- |
+| `game_over`  | Server → Both | `{ result: string, reason: string }`                | Thông báo ván kết thúc            |
+| `ai_loading` | Server → Both | `{}`                                                | Báo hiện overlay Loading          |
+| `ai_result`  | Server → Both | `{ white_elo, black_elo, eco, stats, explanation }` | Trả kết quả AI, hiện Result Modal |
+| `ai_error`   | Server → Both | `{ message: string }`                               | AI Engine lỗi, hiện fallback      |
 
 #### d) Disconnect / Reconnect
 
-| Event | Direction | Payload | Mô tả |
-|-------|-----------|---------|-------|
-| `opponent_disconnected` | Server → Client | `{}` | Đối thủ mất kết nối, clock của họ bị pause |
-| `opponent_reconnected` | Server → Client | `{}` | Đối thủ đã reconnect, clock resume |
-| `reconnect` | Client → Server | `{ roomId: string, sessionToken: string }` | Client reconnect, gửi session token để restore |
-| `reconnected` | Server → Client | `{ color, roomId, fen, whiteTime, blackTime, moves, clockTimes, activeSide }` | Full game state restore |
+| Event                   | Direction       | Payload                                                                       | Mô tả                                          |
+| ----------------------- | --------------- | ----------------------------------------------------------------------------- | ---------------------------------------------- |
+| `opponent_disconnected` | Server → Client | `{}`                                                                          | Đối thủ mất kết nối, clock của họ bị pause     |
+| `opponent_reconnected`  | Server → Client | `{}`                                                                          | Đối thủ đã reconnect, clock resume             |
+| `reconnect`             | Client → Server | `{ roomId: string, sessionToken: string }`                                    | Client reconnect, gửi session token để restore |
+| `reconnected`           | Server → Client | `{ color, roomId, fen, whiteTime, blackTime, moves, clockTimes, activeSide }` | Full game state restore                        |
 
 #### e) Reset / Play Again
 
-| Event | Direction | Payload | Mô tả |
-|-------|-----------|---------|-------|
-| `play_again` | Client → Server | `{}` | Yêu cầu chơi lại |
-| `reset_game` | Server → Both | `{ fen, whiteTime, blackTime, activeSide }` | Reset bàn cờ + clock |
+| Event        | Direction       | Payload                                     | Mô tả                |
+| ------------ | --------------- | ------------------------------------------- | -------------------- |
+| `play_again` | Client → Server | `{}`                                        | Yêu cầu chơi lại     |
+| `reset_game` | Server → Both   | `{ fen, whiteTime, blackTime, activeSide }` | Reset bàn cờ + clock |
 
 ### REST Endpoints
 
-| Method | Path | Mô tả | Response |
-|--------|------|--------|----------|
-| GET | `/` | Serve React app (SPA fallback) | HTML |
-| GET | `/health` | Health check | `{ "status": "ok", "timestamp": "..." }` |
+| Method | Path      | Mô tả                          | Response                                 |
+| ------ | --------- | ------------------------------ | ---------------------------------------- |
+| GET    | `/`       | Serve React app (SPA fallback) | HTML                                     |
+| GET    | `/health` | Health check                   | `{ "status": "ok", "timestamp": "..." }` |
 
 ---
 
@@ -256,6 +256,7 @@ const aiErrorResponse = {
 ### Backend Components
 
 #### `server/index.js` — Entry Point
+
 - Setup Express + Socket.IO (port **3000**)
 - Serve React static build từ `client/dist/`
 - Mount REST routes
@@ -264,6 +265,7 @@ const aiErrorResponse = {
 - Handle disconnect: giữ room state, KHÔNG xóa phòng
 
 #### `server/roomManager.js` — Quản lý Phòng
+
 ```javascript
 // API surface:
 createRoom() → { roomId, sessionToken }
@@ -290,6 +292,7 @@ scheduleFinishedRoomCleanup(roomId) → void
 **Rationale Issue 4:** `leaveRoom()` là artifact từ design cũ. Logic exit room được thực hiện qua `exitRoom()` (chủ động) và `handleDisconnect()` (bị động). Không cần method trung gian.
 
 #### `server/gameLogic.js` — Logic Cờ
+
 ```javascript
 // API surface:
 validateMove(fen, san) → { valid: boolean, error?: string }
@@ -306,6 +309,7 @@ buildPGN(moves[]) → string  // "1. e4 e5 2. Nf3 Nc6 O-O"
 ```
 
 #### `server/clockManager.js` — Server-side Clock
+
 ```javascript
 // Time control: 15+0 (900 giây, 0 increment)
 // API surface:
@@ -328,6 +332,7 @@ resetClock(roomId)              → void   // Reset về initial
 ```
 
 **Rationale Issue 3:** `getClockStatus()` per-clock (1 giá trị chung) không đủ vì mỗi bên có thể có trạng thái khác nhau. Thay vào đó, chỉ cần `getActiveSide()` — frontend tự suy ra status từ context:
+
 - `activeSide === 'white'` → Trắng đang chạy
 - Opponent disconnect → frontend hiển thị status = 'paused' cho opponent
 - Game over → frontend hiển thị status = 'stopped'
@@ -335,6 +340,7 @@ resetClock(roomId)              → void   // Reset về initial
 **Đây là tiếp cận đơn giản hóa tối đa phù hợp với mục tiêu PoC:** Server chỉ cần quản lý thời gian tuyệt đối (`whiteTimeLeft`, `blackTimeLeft`), không cần quản lý thêm trạng thái phức tạp.
 
 #### `server/aiClient.js` — Gọi AI Engine
+
 ```javascript
 // API surface:
 async requestELOPrediction(room) → Promise<AIResult | null>
@@ -350,6 +356,7 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 ### Frontend Components
 
 #### `client/src/App.js` — Router chính
+
 ```jsx
 // Routing (react-router-dom v6):
 // /             → Lobby (InitGame)
@@ -360,6 +367,7 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 ```
 
 #### `client/src/socket.js` — Socket.IO Client Singleton
+
 ```javascript
 // Singleton pattern — import từ bất kỳ component nào
 // Tự động connect khi import, auto-reconnect khi mất kết nối
@@ -373,12 +381,14 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 ```
 
 #### `client/src/pages/Lobby.js` — Sảnh chờ
+
 - **KHÔNG có username dialog** (xóa hoàn toàn)
 - Nút lớn: `[ Tạo Phòng Mới ]`
 - Input: nhập mã phòng + nút `[ Vào Phòng ]`
 - Sau khi tạo phòng → redirect sang `/room/:roomId`
 
 #### `client/src/pages/GameRoom.js` — Phòng đấu (Container)
+
 - Header: Mã phòng + Màu quân của bạn
 - Layout 3 cột: Thông tin Đen + Đồng hồ Đen | Bàn cờ | Đồng hồ Trắng + Thông tin Trắng
 - Sidebar: Move History + Nút "Xin Thua" + Nút "Thoát Phòng"
@@ -387,6 +397,7 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 - On mount: check localStorage for sessionToken, emit `reconnect` if found
 
 #### `client/src/components/ChessBoard.js` — Bàn cờ
+
 - Wrapper quanh `react-chessboard`
 - Props: `position` (FEN), `orientation`, `onPieceDrop(source, target)`, `onPromotion(from, to)`
 - Auto-flip board khi là phe Đen
@@ -397,6 +408,7 @@ async requestELOPrediction(room) → Promise<AIResult | null>
   - Overlay CSS position absolute hoặc custom square style để highlight ô vua màu đỏ
 
 #### `client/src/components/GameClock.js` — Đồng hồ (Server-sync)
+
 - Props: `{ whiteTime, blackTime, activeSide }`
 - `activeSide`: `'white' | 'black' | null`
 - Frontend suy ra status từ context:
@@ -410,6 +422,7 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 **Rationale Issue 3 (Clock):** Không cần `getClockStatus()` trả về per-side status. Frontend biết `activeSide` từ server, và biết opponent có đang disconnected hay không. Từ 2 nguồn này → suy ra status cho mỗi bên. Đơn giản hóa phía server, chỉ quản lý `activeSide` và thời gian tuyệt đối.
 
 #### `client/src/components/MoveHistory.js` — Lịch sử nước đi (SAN)
+
 - Props: `moves: string[]` (mảng SAN: ["e4", "e5", "Nf3", ...])
 - Format: 2 cột (cột số + cột Trắng + cột Đen)
 - VD:
@@ -421,6 +434,7 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 - Auto-scroll xuống cuối khi có nước mới
 
 #### `client/src/components/ResultModal.js` — Bảng kết quả
+
 - Props: `{ result, reason, aiData, loading, error }`
 - Khi `loading=true`: Spinner + "Đang phân tích ELO bằng AI..."
 - Khi `aiData` có: Hiện ELO Trắng/Đen, ECO, CPL, Blunders, Explanation
@@ -428,10 +442,12 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 - Nút: `[ Chơi Lại ]`
 
 #### `client/src/components/WaitingOverlay.js` — Chờ đối thủ
+
 - Hiện khi đã vào phòng nhưng đối thủ chưa vào
 - Hiển thị link mời để copy + nút Copy
 
 #### `client/src/components/DisconnectedOverlay.js` — Đối thủ đã disconnect
+
 - Hiện khi nhận `opponent_disconnected`
 - Text: "Đối thủ đã disconnect. Đang chờ reconnect..."
 
@@ -440,22 +456,26 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 ## Design Decisions
 
 ### Decision 1: Giữ nguyên CRA — không migrate Vite
+
 - **Chọn:** Giữ CRA (react-scripts)
 - **Lý do:** Repo đã chạy ổn định, không cần thay đổi build tool
 - **Trade-off:** Vite có hot reload nhanh hơn, nhưng không đáng effort cho codebase đang chạy tốt
 
 ### Decision 2: Server-side Clock là nguồn sự thật
+
 - **Chọn:** Server quản lý đồng hồ, client chỉ hiển thị (nhận `clock_update` mỗi 1 giây)
 - **Lý do:** Tránh người chơi dùng DevTools hack thời gian
 - **Trade-off:** Tăng độ phức tạp, nhưng cần thiết cho PoC Demo đáng tin cậy
 
 ### Decision 3: Clock Pause/Resume khi Disconnect
+
 - **Chọn:** Khi 1 player disconnect: clock bên đó PAUSE, bên kia TIẾP TỤC chạy
 - **Lý do:** Tránh griefing (player disconnect để "pause" clock). Bên còn lại không bị thiệt.
 - **Alternative considered:** Pause tất cả → REJECTED vì cho phép exploit
 - **Edge case:** Cả 2 disconnect → clock dừng hẳn → server xóa phòng sau 30 giây
 
 ### Decision 4: Session Token cho Reconnect
+
 - **Chọn:** Mỗi player được gán session token (UUID v4) khi vào phòng, lưu vào `localStorage`
 - **Lý do:** Socket ID thay đổi sau reconnect, cần cách khác để identify player
 - **Flow:**
@@ -466,6 +486,7 @@ async requestELOPrediction(room) → Promise<AIResult | null>
   5. Server lookup → restore game state → gán lại `socketId`
 
 ### Decision 5: Room Lifecycle & Cleanup
+
 - **Chọn:** Nhiều tầng cleanup:
   - `waiting` → 5 phút không ai join → xóa
   - `playing` → cả 2 disconnect → 30 giây không reconnect → xóa
@@ -473,34 +494,43 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 - **Lý do:** Không để memory leak từ phòng bị bỏ quên
 
 ### Decision 6: PGN Format — SAN notation
+
 - **Chọn:** "1. e4 e5 2. Nf3 Nc6 O-O" (không có header metadata)
 - **Lý do:** Đơn giản, chess.js hỗ trợ build trực tiếp, dễ debug
 - **Lưu ý:** Không cần header [Event], [Date], [White], [Black]
 
 ### Decision 7: AI Client dùng native `fetch`
+
 - **Chọn:** Dùng `fetch()` thay vì `axios`
 - **Lý do:** Không cần thêm dependency, `fetch` có sẵn trong Node.js 18+
 - **Timeout:** Dùng `AbortSignal.timeout(30000)` — 30 giây
 
 ### Decision 8: Auto-promote Queen qua `onPromotion` callback
+
 - **Chọn:** Dùng `onPromotion` callback của react-chessboard: khi được gọi, return `'q'`
 - **Lý do:** react-chessboard v4.5.0 yêu cầu callback để handle promotion. Return `'q'` auto-promote Queen.
 - **Code pattern:**
   ```jsx
   function onDrop(sourceSquare, targetSquare) {
-    const move = makeAMove({ from: sourceSquare, to: targetSquare, promotion: 'q' });
+    const move = makeAMove({
+      from: sourceSquare,
+      to: targetSquare,
+      promotion: "q",
+    });
     return move != null;
   }
   // VÀ
-  <Chessboard onPromotion={(from, to) => 'q'} onPieceDrop={onDrop} />
+  <Chessboard onPromotion={(from, to) => "q"} onPieceDrop={onDrop} />;
   ```
 
 ### Decision 9: React Router cho SPA Navigation
+
 - **Chọn:** Dùng `react-router-dom` v6
 - **Lý do:** URL dạng `/room/:roomId` cho phép share link trực tiếp
 - **Direct access:** Mở `/room/:roomId` trực tiếp → auto-join phòng
 
 ### Decision 10: Exit Room — Resign khi đang chơi
+
 - **Chọn:** Bấm "Thoát Phòng" khi đang `playing` → xử lý như resign
 - **Lý do:** Đơn giản, không cần thêm logic phức tạp
 - **Alternative:** Tạo rời 2 action "Thoát" và "Xin Thua" → Có thể thêm sau nếu cần
@@ -510,6 +540,7 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 ## Non-Functional Requirements
 
 ### Performance
+
 - WebSocket latency: < 100ms (local network)
 - Chess move validation: < 10ms
 - Game start: < 2s sau khi người thứ 2 join
@@ -517,17 +548,20 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 - Clock sync interval: 1 giây
 
 ### Scalability
+
 - Hỗ trợ 10–20 concurrent rooms
 - Mỗi room tối đa 2 players
 - Stateless server ngoại trừ in-memory rooms
 
 ### Security (Local Demo)
+
 - Không có authentication
 - CORS cho phép tất cả origins
 - Server-side clock chống manipulation
 - Session token trong localStorage (không bảo mật cao, chấp nhận cho PoC)
 
 ### Usability
+
 - Không login/registration
 - Giao diện tối giản: Lobby → Game → Result
 - Clear error messages khi lỗi
@@ -535,19 +569,20 @@ async requestELOPrediction(room) → Promise<AIResult | null>
 - Visual indicator khi đối thủ disconnect
 
 ### Browser Support
+
 - Chrome 90+, Firefox 88+, Safari 14+, Edge 90+ (desktop only)
 
 ---
 
 ## Error Codes
 
-| Code | Message | Trường hợp |
-|------|---------|------------|
-| `ROOM_NOT_FOUND` | Phòng không tồn tại | Nhập mã phòng sai |
-| `ROOM_FULL` | Phòng đã đầy | Cố gắng join phòng đã có 2 người |
-| `INVALID_MOVE` | Nước đi không hợp lệ | Di chuyển sai luật |
-| `NOT_YOUR_TURN` | Chưa đến lượt bạn | Cố gắng đi khi chưa đến lượt |
-| `AI_ERROR` | Không thể kết nối AI Engine. Phân tích ELO tạm thời không khả dụng. | AI Engine timeout/lỗi |
+| Code             | Message                                                             | Trường hợp                       |
+| ---------------- | ------------------------------------------------------------------- | -------------------------------- |
+| `ROOM_NOT_FOUND` | Phòng không tồn tại                                                 | Nhập mã phòng sai                |
+| `ROOM_FULL`      | Phòng đã đầy                                                        | Cố gắng join phòng đã có 2 người |
+| `INVALID_MOVE`   | Nước đi không hợp lệ                                                | Di chuyển sai luật               |
+| `NOT_YOUR_TURN`  | Chưa đến lượt bạn                                                   | Cố gắng đi khi chưa đến lượt     |
+| `AI_ERROR`       | Không thể kết nối AI Engine. Phân tích ELO tạm thời không khả dụng. | AI Engine timeout/lỗi            |
 
 ---
 

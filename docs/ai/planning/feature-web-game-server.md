@@ -24,10 +24,12 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 > **Mục tiêu:** Clean codebase, xóa auth, fix bug, setup routing, session token
 
 #### 1.1: Fix Bug Room Check trong Server
+
 - [x] Fix `room.length` → `room.players` (rooms là Map, không phải array)
 - [x] Verify tất cả room access đều dùng `rooms.get(roomId)`
 
 #### 1.2: Xóa Username Dialog hoàn toàn
+
 - [x] Xóa `CustomDialog` username prompt từ `App.js`
 - [x] Xóa state `username`, `usernameSubmitted`
 - [x] Xóa event `username` emit lên server
@@ -35,6 +37,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [x] Thay player display bằng màu quân (Trắng/Đen) thay vì username
 
 #### 1.3: Setup React Router
+
 - [x] Cài `react-router-dom@6`
 - [x] Route `/` → `Lobby` (tạo/nhập phòng)
 - [x] Route `/room/:roomId` → `GameRoom`
@@ -43,6 +46,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [x] Tạo `pages/Lobby.js` và `pages/GameRoom.js` (tách từ App.js)
 
 #### 1.4: Backend — Restructure
+
 - [x] Extract `roomManager.js` — tạo file mới, quản lý phòng + session token
 - [x] Extract `gameLogic.js` — skeleton (validate move, build PGN, detect game over)
 - [x] Extract `clockManager.js` — skeleton (pause/resume, time tracking)
@@ -51,6 +55,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [x] Đổi server port: `8080` → **`3000`**
 
 #### 1.5: Session Token Infrastructure
+
 - [x] Server: sinh UUID v4 cho mỗi player khi join, lưu vào `room.sessionTokens[color]`
 - [x] Map `sessionToken → { roomId, color }` trong `disconnectedSessions`
 - [x] Client: lưu `sessionToken` vào `localStorage` key `'chess_session_token'`
@@ -64,12 +69,14 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 > **Mục tiêu:** Socket.IO events đúng contract, 2 người chơi đồng bộ bàn cờ
 
 #### 2.1: Implement Room Manager đúng Spec
+
 - [x] `createRoom()`: sinh mã phòng 6–8 ký tự, set `status: 'waiting'`, `players: { white: socket.id, black: null }`, sinh `sessionToken` cho người tạo
 - [x] `joinRoom()`: gán phe Đen cho người thứ 2, sinh `sessionToken` cho người join, set `status: 'playing'`, emit `opponent_joined`
 - [x] Từ chối người thứ 3: emit `room_full`
 - [x] Fix: dùng `room.players` thay vì `room.length`
 
 #### 2.2: Implement Socket Events đúng Contract (v6 spec)
+
 - [x] Event `create_room` → `room_created` với `{ roomId, sessionToken }`
 - [x] Event `join_room` → `joined` với `{ color, roomId, fen, sessionToken }` + `opponent_joined` cho người kia
 - [x] Event `join_room` → `room_full` / `room_not_found` cho error
@@ -77,6 +84,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [x] Từ chối nước đi nếu không phải lượt mình (`NOT_YOUR_TURN`)
 
 #### 2.3: GameBoard — Auto-flip + Auto-promote
+
 - [x] Pass `orientation` prop (white/black) vào `ChessBoard`
 - [x] react-chessboard `boardOrientation={orientation}`
 - [x] **Auto-promote Queen**: `chess.js` auto-promote 'q' khi đến hàng cuối
@@ -105,17 +113,17 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] `resetClock(roomId)`: reset về initial
 
 #### 3.2: Wire Clock vào Game Flow
+
 - [ ] Khi opponent join → `initClock` + `startClock` (Trắng bắt đầu)
 - [ ] Mỗi `make_move` → `switchClock` → record `timeSpent`
 - [ ] Broadcast `clock_update` mỗi 1 giây tới cả 2 client (kèm `activeSide`)
 - [ ] Khi `game_over` → `stopClock`
 - [ ] Khi disconnect → `pauseClock(roomId, disconnectedColor)`
 
-
-
 - [ ] Khi reconnect → `resumeClock(roomId, reconnectedColor)`
 
 #### 3.3: Implement GameOver Detection (Server-side)
+
 - [ ] Dùng chess.js kiểm tra `isCheckmate()`, `isStalemate()`
 - [ ] `handleResign(color)`: bên color bấm → bên kia thắng
 - [ ] `handleTimeout(roomId, color)`: trigger khi clock về 0
@@ -123,11 +131,13 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] Đặt `finishedAt = Date.now()` để tính room cleanup timer
 
 #### 3.4: Implement PGN Collection
+
 - [ ] Mỗi nước đi → lưu `san` (VD: "e4", "Nf3", "O-O") vào `room.moves[]`
 - [ ] Implement `buildPGN(moves[])`: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6"
 - [ ] Verify PGN có thể parse ngược bằng chess.js
 
 #### 3.5: Frontend Clock Component (Server-sync)
+
 - [ ] `GameClock.js`: props `{ whiteTime, blackTime, activeSide }`
 - [ ] `activeSide`: `'white' | 'black' | null`
 - [ ] Frontend suy ra status từ context:
@@ -139,17 +149,20 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] Nhận `clock_update` từ server mỗi giây (payload có `activeSide`)
 
 #### 3.6: Frontend Move History Component (SAN)
+
 - [ ] `MoveHistory.js`: props `{ moves: string[] }`
 - [ ] Format 2 cột: số nước | Trắng | Đen
-- [ ] VD: "1. e4    e5" trên cùng 1 dòng
+- [ ] VD: "1. e4 e5" trên cùng 1 dòng
 - [ ] Auto-scroll xuống cuối khi có nước mới
 
 #### 3.7: Frontend — Resign + Exit Buttons
+
 - [ ] Nút "Xin Thua" → emit `resign` event lên server
 - [ ] Nút "Thoát Phòng" → emit `exit_room` event
 - [ ] Server: `exit_room` khi đang `waiting` → xóa phòng. Khi đang `playing` → xử lý như resign.
 
 #### 3.8: Waiting Overlay
+
 - [ ] `WaitingOverlay.js`: hiện khi đã join nhưng `status === 'waiting'`
 - [ ] Hiển thị link phòng để copy + nút "Copy Link"
 - [ ] Có nút "Thoát Phòng"
@@ -163,6 +176,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 > **Mục tiêu:** Giữ room state, clock pause/resume, session token restore
 
 #### 4.1: Handle Disconnect (Server-side)
+
 - [ ] `socket.on('disconnect')`: lookup room by socketId → tìm color
 - [ ] Set `room.players[color] = null`
 - [ ] Call `pauseClock(roomId, color)` — clock của bên đó dừng
@@ -171,6 +185,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] Else: 1 người còn → emit `opponent_disconnected` tới player còn lại
 
 #### 4.2: Handle Reconnect (Server-side)
+
 - [ ] `socket.on('reconnect', { roomId, sessionToken })`: lookup `disconnectedSessions`
 - [ ] Match sessionToken → get `roomId` và `color`
 - [ ] Verify room còn tồn tại → restore
@@ -182,21 +197,25 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] Xóa khỏi `disconnectedSessions`
 
 #### 4.3: Handle Reconnect (Client-side)
+
 - [ ] Socket.IO auto-reconnect: `socket.io.on('reconnect_attempt', ...)`
 - [ ] On reconnect: check localStorage for `sessionToken`, emit `reconnect`
 - [ ] Khi nhận `reconnected`: restore game state (fen, moves, clock, etc.)
 - [ ] Khi nhận `opponent_reconnected`: tắt DisconnectedOverlay
 
 #### 4.4: Frontend Disconnected Overlay
+
 - [ ] `DisconnectedOverlay.js`: hiện khi nhận `opponent_disconnected`
 - [ ] Text: "Đối thủ đã disconnect. Đang chờ reconnect..."
 - [ ] Đồng hồ opponent hiển thị trạng thái PAUSED
 
 #### 4.5: Frontend Reconnecting Overlay
+
 - [ ] `ReconnectingOverlay.js`: hiện khi socket đang reconnect (Socket.IO `reconnect_attempt`)
 - [ ] Text: "Mất kết nối. Đang kết nối lại..."
 
 #### 4.6: Room Cleanup System
+
 - [ ] `roomCleanupTimers` Map: `roomId → setTimeoutId`
 - [ ] `scheduleRoomCleanup(roomId, delayMs)`: đặt timer → `cleanupRoom(roomId)`
 - [ ] `cancelCleanupTimer(roomId)`: clear timer nếu có
@@ -206,6 +225,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] Khi `waiting` timeout: `scheduleRoomCleanup(roomId, 300000)` → 5 phút
 
 #### 4.7: Timeout khi Disconnect
+
 - [ ] Nếu clock hết giờ trong lúc opponent disconnect → vẫn trigger `game_over` bình thường
 - [ ] Server xử lý timeout như bình thường, opponent vẫn nhận `game_over` (nếu đang online)
 
@@ -218,6 +238,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 > **Mục tiêu:** Kết nối thực sự với MMD-G2, hiện ELO + Explanation
 
 #### 5.1: Implement AI Client (Server-side)
+
 - [ ] `aiClient.js`: HTTP POST dùng native `fetch`
 - [ ] Build request body: `{ pgn, clock_times, result, time_control: "15+0" }`
 - [ ] Env var `AI_ENGINE_URL` (default: `http://localhost:8000`)
@@ -226,6 +247,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] Return `null` nếu lỗi (để caller xử lý fallback)
 
 #### 5.2: Wire AI vào Game Over Flow
+
 - [ ] `handleGameOver(room, result, reason, io)`:
   1. Emit `game_over` + `ai_loading` tới cả 2 client
   2. `buildPGN` + lấy `clockTimes`
@@ -235,12 +257,14 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
   6. Đặt `finishedAt = Date.now()` cho cleanup timer
 
 #### 5.3: Frontend AI Loading Overlay
+
 - [ ] State: `aiLoading: boolean`
 - [ ] Khi nhận `ai_loading` → set `aiLoading = true`
 - [ ] Overlay toàn màn hình: spinner + "Đang phân tích ELO bằng AI..."
 - [ ] Khi nhận `ai_result` hoặc `ai_error` → tắt overlay
 
 #### 5.4: Frontend Result Modal
+
 - [ ] `ResultModal.js`:
   - Header: kết quả ("Trắng Thắng / Đen Thắng / Hòa") + reason
   - 2 ô ELO lớn: Trắng | Đen
@@ -251,6 +275,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] Render modal khi `aiData` hoặc `aiError` có giá trị
 
 #### 5.5: Handle AI Error Fallback
+
 - [ ] Khi nhận `ai_error`: hiện modal với kết quả cơ bản (Thắng/Thua/Hòa)
 - [ ] Message: "Không thể kết nối AI Engine. Phân tích ELO tạm thời không khả dụng."
 - [ ] Vẫn cho bấm "Chơi Lại" bình thường
@@ -264,6 +289,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 > **Mục tiêu:** Tất cả checklist nghiệm thu pass, UX tốt
 
 #### 6.1: Play Again Feature
+
 - [ ] Server: emit `reset_game` tới cả 2 client khi bấm
 - [ ] Frontend: reset `Game` state (chess instance, FEN, moves, clockTimes)
 - [ ] Reset clock: `resetClock(roomId)` → `startClock(roomId)`
@@ -271,6 +297,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] Ẩn Result Modal
 
 #### 6.2: UX Polish
+
 - [ ] Theme tối (dark mode) cho Lobby và Game (MUI theme)
 - [ ] **Check indicator**: dùng `chess.inCheck()` để detect. react-chessboard v4.5.0 không có built-in → custom overlay CSS:
   - Tính vị trí vua: `chess.board().king(chess.turn())`
@@ -278,6 +305,7 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] Copy link button trong WaitingOverlay (dùng `navigator.clipboard.writeText`)
 
 #### 6.3: Debug Logging
+
 - [ ] Log mỗi nước đi: `{ move, timeSpent, fen }`
 - [ ] Log khi `game_over`: `{ result, reason, pgn, clockTimes.length }`
 - [ ] Log AI request/response (success và error)
@@ -286,10 +314,12 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 - [ ] Console đủ để debug mà không cần breakpoint
 
 #### 6.4: Verify Server Port 3000
+
 - [ ] Đổi server listen port: `8080` → `3000`
 - [ ] Verify: chạy `npm start` → server listen on port 3000
 
 #### 6.5: Checklist Nghiệm Thu
+
 - [ ] Tất cả 23 items trong spec Requirements Section "Success Criteria" pass
 
 **Estimated:** ~3–4 giờ
@@ -299,10 +329,12 @@ description: Kế hoạch triển khai chi tiết cho Web Game Server (repo ches
 ## Dependencies
 
 ### External Dependencies
+
 - **AI Engine Server** (repo MMD-G2) phải chạy trên cổng 8000 để test end-to-end
 - Hoặc AI Client cần handle graceful degradation khi AI Engine chưa có
 
 ### Internal Dependencies (Phase ordering)
+
 ```
 Phase 1 (Foundation)
     ↓
@@ -318,6 +350,7 @@ Phase 6 (Polish & QA)
 ```
 
 ### Trong Phase
+
 - 1.3 (React Router) → 1.2 (Xóa auth): thứ tự tự do
 - 1.5 (Session token) → 2.1 (Room Manager): token infrastructure trước
 - 2.3 (Board flip + promote) → 2.2 (Socket events): tự do
@@ -330,40 +363,40 @@ Phase 6 (Polish & QA)
 
 ## Timeline & Estimates
 
-| Phase | Tên | Estimate | Ghi chú |
-|-------|-----|---------|---------|
-| P1 | Foundation | 4–5 giờ | Fix bug, xóa auth, setup Router, session token |
-| P2 | Multiplayer Core | 4–6 giờ | Socket events + Board |
-| P3 | Game Logic | 10–12 giờ | Clock pause/resume + PGN + game over (nhiều nhất) |
-| P4 | Disconnect/Reconnect | 6–8 giờ | Session token + clock pause/resume + cleanup |
-| P5 | AI Integration | 4–6 giờ | AI client + Result Modal |
-| P6 | Polish & QA | 3–4 giờ | Play Again + debug + checklist |
-| **Total** | | **31–41 giờ** | ~1.5 tuần làm việc (6–8 ngày) |
+| Phase     | Tên                  | Estimate      | Ghi chú                                           |
+| --------- | -------------------- | ------------- | ------------------------------------------------- |
+| P1        | Foundation           | 4–5 giờ       | Fix bug, xóa auth, setup Router, session token    |
+| P2        | Multiplayer Core     | 4–6 giờ       | Socket events + Board                             |
+| P3        | Game Logic           | 10–12 giờ     | Clock pause/resume + PGN + game over (nhiều nhất) |
+| P4        | Disconnect/Reconnect | 6–8 giờ       | Session token + clock pause/resume + cleanup      |
+| P5        | AI Integration       | 4–6 giờ       | AI client + Result Modal                          |
+| P6        | Polish & QA          | 3–4 giờ       | Play Again + debug + checklist                    |
+| **Total** |                      | **31–41 giờ** | ~1.5 tuần làm việc (6–8 ngày)                     |
 
 ---
 
 ## Risks & Mitigation
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| AI Engine chưa chạy được khi test | Cao | Thấp | AI Client handle null return + fallback UI đã implement |
-| Clock drift (server vs client) | Thấp | Trung bình | Server-side clock + sync 1 giây |
-| Socket event mismatch (server vs client) | Trung bình | Cao | Đặt constant/event name ở 1 chỗ, import chung |
-| Session token collision | Thấp | Cao | Dùng UUID v4 (2^122 combinations) |
-| Reconnect không restore đúng state | Trung bình | Cao | Test kỹ: disconnect giữa ván, reconnect giữa ván, reconnect sau game_over |
-| PGN format không parse được bởi AI | Thấp | Cao | Test với chess.js parse ngược sau mỗi build |
-| Room cleanup chạy quá sớm | Trung bình | Cao | Cancel cleanup timer ngay khi có reconnect hoặc action |
-| Clock pause/resume logic phức tạp | Trung bình | Trung bình | Vẽ state diagram trước khi code |
+| Risk                                     | Likelihood | Impact     | Mitigation                                                                |
+| ---------------------------------------- | ---------- | ---------- | ------------------------------------------------------------------------- |
+| AI Engine chưa chạy được khi test        | Cao        | Thấp       | AI Client handle null return + fallback UI đã implement                   |
+| Clock drift (server vs client)           | Thấp       | Trung bình | Server-side clock + sync 1 giây                                           |
+| Socket event mismatch (server vs client) | Trung bình | Cao        | Đặt constant/event name ở 1 chỗ, import chung                             |
+| Session token collision                  | Thấp       | Cao        | Dùng UUID v4 (2^122 combinations)                                         |
+| Reconnect không restore đúng state       | Trung bình | Cao        | Test kỹ: disconnect giữa ván, reconnect giữa ván, reconnect sau game_over |
+| PGN format không parse được bởi AI       | Thấp       | Cao        | Test với chess.js parse ngược sau mỗi build                               |
+| Room cleanup chạy quá sớm                | Trung bình | Cao        | Cancel cleanup timer ngay khi có reconnect hoặc action                    |
+| Clock pause/resume logic phức tạp        | Trung bình | Trung bình | Vẽ state diagram trước khi code                                           |
 
 ---
 
 ## Resources Needed
 
-| Resource | Chi tiết |
-|----------|----------|
-| **Team** | 1 web developer |
-| **AI Engine URL** | `http://localhost:8000` (hoặc cấu hình qua env `AI_ENGINE_URL`) |
-| **Node.js** | >= 18 (cho native `fetch`) |
-| **NPM packages** | react-router-dom@6, concurrently (mới) — others đã có |
-| **Tools** | 2 trình duyệt (hoặc 1 trình duyệt + 1 incognito) để test multiplayer |
-| **AI Engine** | Repo MMD-G2 chạy `uvicorn src.ai_engine.main:app --port 8000` |
+| Resource          | Chi tiết                                                             |
+| ----------------- | -------------------------------------------------------------------- |
+| **Team**          | 1 web developer                                                      |
+| **AI Engine URL** | `http://localhost:8000` (hoặc cấu hình qua env `AI_ENGINE_URL`)      |
+| **Node.js**       | >= 18 (cho native `fetch`)                                           |
+| **NPM packages**  | react-router-dom@6, concurrently (mới) — others đã có                |
+| **Tools**         | 2 trình duyệt (hoặc 1 trình duyệt + 1 incognito) để test multiplayer |
+| **AI Engine**     | Repo MMD-G2 chạy `uvicorn src.ai_engine.main:app --port 8000`        |

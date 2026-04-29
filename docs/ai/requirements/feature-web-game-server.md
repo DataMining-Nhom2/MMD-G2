@@ -11,6 +11,7 @@ description: Xây dựng Web Game Server (repo chess-realm) — multiplayer ches
 **Vấn đề cần giải quyết?**
 
 Kiến trúc v6 (`v6-poc-system-architecture.md`) đã định nghĩa rõ hệ thống cần chia thành 2 máy chủ độc lập:
+
 - **Máy chủ 1**: Web Game Server (Node.js + React + Socket.IO) — repo `chess-realm`
 - **Máy chủ 2**: AI Engine Server (Python + FastAPI) — repo `MMD-G2`
 
@@ -24,11 +25,13 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 6. **Xóa username dialog** — không login, không auth
 
 **Ai chịu ảnh hưởng?**
+
 - Team Web: phát triển repo `chess-realm` theo spec v6
 - Team AI: cung cấp API `/api/predict-elo` tại `http://<AI_HOST>:8000`
 - Người dùng cuối: người chơi cờ muốn đánh online và xem ELO dự đoán
 
 **Tình trạng hiện tại?**
+
 - `chess-realm` có: React (CRA) + MUI + react-chessboard (v4.5.0) + chess.js (v1.0.0-beta.8) + Socket.IO server cơ bản
 - `chess-realm` thiếu: Server-side Clock, AI client, Result Modal, PGN collection, time tracking, Resign, Play Again, Disconnect/Reconnect
 
@@ -37,6 +40,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 ## Goals & Objectives
 
 **Mục tiêu chính:**
+
 1. Giữ nguyên codebase React (CRA) + MUI + Socket.IO hiện tại, chỉ mở rộng phần còn thiếu
 2. Implement đồng hồ thi đấu **15+0** (server-side, chống hack), thu thập `clockTimes[]` chính xác
 3. Thu thập PGN string khi ván kết thúc
@@ -46,6 +50,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 7. Xử lý disconnect/reconnect — giữ room state, clock pause/resume, auto-rejoin khi socket reconnect
 
 **Mục tiêu thứ cấp:**
+
 - Xóa hoàn toàn username dialog (không đăng nhập)
 - Nút "Chơi Lại" để reset ván mới
 - Nút "Xin Thua" (Resign)
@@ -55,6 +60,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 - Promotion auto-Queen khi lên hàng cuối (dùng `onPromotion` callback)
 
 **Non-goals (ngoài phạm vi):**
+
 - Authentication / User accounts / Database
 - Hỗ trợ mobile (không tối ưu giao diện cho điện thoại)
 - Nhiều hơn 2 người trong 1 phòng
@@ -68,6 +74,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 ## User Stories & Use Cases
 
 ### US1: Tạo phòng chơi mới
+
 > **Như một** người chơi muốn thử nghiệm,  
 > **Tôi muốn** bấm "Tạo Phòng Mới" và nhận link mời,  
 > **để** chia sẻ với đối thủ bắt đầu ván đấu.
@@ -77,6 +84,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 - UC1.3: Không cần nhập username — bước này bị loại bỏ hoàn toàn
 
 ### US2: Tham gia phòng chơi
+
 > **Như một** người chơi được mời,  
 > **Tôi muốn** mở link phòng trên trình duyệt khác,  
 > **để** tự động vào phòng và được gán Đen.
@@ -86,6 +94,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 - UC2.3: Phòng không tồn tại → Hiện thông báo lỗi
 
 ### US3: Thi đấu real-time
+
 > **Như một** người chơi,  
 > **Tôi muốn** kéo thả quân cờ để đi nước,  
 > **để** chơi ván cờ với đối thủ theo luật FIDE.
@@ -98,6 +107,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 - UC3.6: Phát hiện Checkmate / Stalemate → Kết thúc ván
 
 ### US4: Đồng hồ thi đấu (Server-side)
+
 > **Như một** người chơi,  
 > **Tôi muốn** thấy đồng hồ đếm ngược,  
 > **để** biết còn bao nhiêu thời gian và đo lường thời gian suy nghĩ.
@@ -110,17 +120,19 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 - UC4.6: Server sync đồng hồ mỗi 1 giây tới cả 2 client qua `clock_update` event
 
 ### US5: Kết thúc ván & Phân tích AI
+
 > **Như một** người chơi,  
 > **Tôi muốn** xem kết quả ELO và lời bình luận từ AI,  
 > **để** hiểu trình độ và nhận xét về ván đấu.
 
 - UC5.1: Ván kết thúc (Checkmate / Timeout / Resign / Stalemate) → Server tổng hợp PGN + clockTimes
-- UC5.2: Hiện overlay loading: *"Đang phân tích ELO bằng AI..."*
+- UC5.2: Hiện overlay loading: _"Đang phân tích ELO bằng AI..."_
 - UC5.3: Gửi HTTP POST `/api/predict-elo` sang AI Engine
 - UC5.4: Nhận response `{ white_elo, black_elo, eco, stats, explanation }` → Hiện Result Modal
 - UC5.5: AI Engine lỗi/timeout → Vẫn hiện kết quả cơ bản, thông báo fallback
 
 ### US6: Chơi lại ván mới
+
 > **Như một** người chơi,  
 > **Tôi muốn** bấm "Chơi Lại" sau khi xem kết quả,  
 > **để** bắt đầu ván mới ngay trong cùng phòng.
@@ -129,6 +141,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 - UC6.2: Giữ nguyên phe Trắng/Đen đã gán, không cần tạo phòng mới
 
 ### US7: Xin thua
+
 > **Như một** người chơi,  
 > **Tôi muốn** bấm "Xin Thua" khi thấy thế cờ bất lợi,  
 > **để** chủ động kết thúc ván và nhận kết quả ELO.
@@ -136,6 +149,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 - UC7.1: Bấm "Xin Thua" → Server phát hiện → `game_over` với `reason: "resign"`
 
 ### US8: Disconnect & Reconnect
+
 > **Như một** người chơi bị mất mạng tạm thời hoặc vô tình refresh trang,  
 > **Tôi muốn** khi reconnect thì quay lại ván đấu đang dở,  
 > **để** không mất tiến độ ván cờ.
@@ -158,6 +172,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
   - Người tạo phòng đóng tab → opponent đang chờ → opponent nhận thông báo → có thể thoát
 
 ### US9: Thoát phòng
+
 > **Như một** người chơi đang chờ hoặc đang chơi,  
 > **Tôi muốn** bấm "Thoát Phòng" để rời đi,  
 > **để** không bị treo trong phòng vô ích.
@@ -172,37 +187,38 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 
 **Kết quả đo lường được (phải PASS tất cả):**
 
-| # | Tiêu chí | Điều kiện đạt |
-|---|----------|----------------|
-| 1 | Tạo phòng | Mã phòng duy nhất, hiện link mời shareable trên port 3000 |
-| 2 | Vào phòng | Mở link trên tab khác → vào đúng phòng, được gán Đen |
-| 3 | Realtime sync | Đi nước trên máy A → máy B cập nhật trong < 1 giây |
-| 4 | Clock server-side | Đồng hồ chạy trên server, sync 1 giây/lần tới client |
-| 5 | Clock tracking | Mỗi nước đi server tính `timeSpent`, lưu vào `clockTimes[]` |
-| 6 | Default 15 phút | Time control mặc định là 15+0 |
-| 7 | Clock pause on disconnect | Bên disconnect → clock tạm dừng. Bên còn → clock tiếp tục |
-| 8 | Timeout detection | Hết giờ → server phát hiện `timeout`, trigger `game_over` |
-| 9 | Checkmate detection | Chiếu bí → tự phát hiện, trigger `game_over` |
-| 10 | Resign | Bấm "Xin Thua" → trigger `game_over` |
-| 11 | Exit room | Bấm "Thoát Phòng" → rời phòng hoặc xử lý như resign |
-| 12 | PGN build đúng | Khi `game_over` → build chuỗi PGN chuẩn SAN (VD: "1. e4 e5 2. Nf3 Nc6") |
-| 13 | Gọi AI Engine | POST `/api/predict-elo` với đúng payload JSON |
-| 14 | Hiển thị Result Modal | ELO, ECO, CPL, Blunders, Explanation hiển thị đầy đủ |
-| 15 | AI fallback | AI Engine không phản hồi → vẫn hiện kết quả cơ bản, không crash |
-| 16 | Chơi Lại | Reset bàn cờ + clock, giữ nguyên phòng |
-| 17 | Không login | Không có username dialog, không auth |
-| 18 | Reconnect restore | Refresh trang → reconnect → khôi phục full game state |
-| 19 | Socket ID reset | Sau reconnect, socket ID thay đổi nhưng game state vẫn đúng |
-| 20 | Auto-promote Queen | Lên hàng cuối → `onPromotion` callback → tự động thành Hậu |
-| 21 | Move History | Hiển thị danh sách nước đi dạng SAN, 2 cột Trắng/Đen |
-| 22 | Room cleanup | Cả 2 disconnect → xóa phòng. Sau 5 phút không ai vào → xóa phòng |
-| 23 | Console debug | Mỗi nước đi log `timeSpent`, mỗi `game_over` log PGN + clockTimes |
+| #   | Tiêu chí                  | Điều kiện đạt                                                           |
+| --- | ------------------------- | ----------------------------------------------------------------------- |
+| 1   | Tạo phòng                 | Mã phòng duy nhất, hiện link mời shareable trên port 3000               |
+| 2   | Vào phòng                 | Mở link trên tab khác → vào đúng phòng, được gán Đen                    |
+| 3   | Realtime sync             | Đi nước trên máy A → máy B cập nhật trong < 1 giây                      |
+| 4   | Clock server-side         | Đồng hồ chạy trên server, sync 1 giây/lần tới client                    |
+| 5   | Clock tracking            | Mỗi nước đi server tính `timeSpent`, lưu vào `clockTimes[]`             |
+| 6   | Default 15 phút           | Time control mặc định là 15+0                                           |
+| 7   | Clock pause on disconnect | Bên disconnect → clock tạm dừng. Bên còn → clock tiếp tục               |
+| 8   | Timeout detection         | Hết giờ → server phát hiện `timeout`, trigger `game_over`               |
+| 9   | Checkmate detection       | Chiếu bí → tự phát hiện, trigger `game_over`                            |
+| 10  | Resign                    | Bấm "Xin Thua" → trigger `game_over`                                    |
+| 11  | Exit room                 | Bấm "Thoát Phòng" → rời phòng hoặc xử lý như resign                     |
+| 12  | PGN build đúng            | Khi `game_over` → build chuỗi PGN chuẩn SAN (VD: "1. e4 e5 2. Nf3 Nc6") |
+| 13  | Gọi AI Engine             | POST `/api/predict-elo` với đúng payload JSON                           |
+| 14  | Hiển thị Result Modal     | ELO, ECO, CPL, Blunders, Explanation hiển thị đầy đủ                    |
+| 15  | AI fallback               | AI Engine không phản hồi → vẫn hiện kết quả cơ bản, không crash         |
+| 16  | Chơi Lại                  | Reset bàn cờ + clock, giữ nguyên phòng                                  |
+| 17  | Không login               | Không có username dialog, không auth                                    |
+| 18  | Reconnect restore         | Refresh trang → reconnect → khôi phục full game state                   |
+| 19  | Socket ID reset           | Sau reconnect, socket ID thay đổi nhưng game state vẫn đúng             |
+| 20  | Auto-promote Queen        | Lên hàng cuối → `onPromotion` callback → tự động thành Hậu              |
+| 21  | Move History              | Hiển thị danh sách nước đi dạng SAN, 2 cột Trắng/Đen                    |
+| 22  | Room cleanup              | Cả 2 disconnect → xóa phòng. Sau 5 phút không ai vào → xóa phòng        |
+| 23  | Console debug             | Mỗi nước đi log `timeSpent`, mỗi `game_over` log PGN + clockTimes       |
 
 ---
 
 ## Constraints & Assumptions
 
 **Ràng buộc kỹ thuật:**
+
 - Frontend: **React + CRA** (giữ nguyên codebase hiện tại, không migrate Vite)
 - UI: **MUI v5** (đã dùng, giữ nguyên)
 - Chess Board: **react-chessboard v4.5.0** + **chess.js v1.0.0-beta.8** (đã dùng, giữ nguyên)
@@ -213,6 +229,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 - Không dùng: Database, ORM, Auth library, Docker, Sound
 
 **Ràng buộc kiến trúc:**
+
 - Chỉ giao tiếp với AI Engine qua **1 endpoint duy nhất**: `POST /api/predict-elo`
 - Tất cả game state lưu **in-memory** (RAM), không persistence
 - Đồng hồ **server-side** là nguồn sự thật (chống client-side manipulation)
@@ -220,6 +237,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 - Session token dùng `localStorage` để restore sau refresh/disconnect
 
 **Giả định:**
+
 - Người dùng có trình duyệt hiện đại (Chrome/Firefox mới nhất) trên desktop
 - Không cần hỗ trợ mobile (UI không tối ưu cho điện thoại)
 - AI Engine Server chạy trên cổng 8000 và cùng mạng LAN (hoặc localhost)
@@ -234,6 +252,7 @@ Repo `chess-realm` hiện tại đã có bộ khung cơ bản (React + MUI + rea
 ## Questions & Open Items
 
 **Đã xác định rõ (from spec v6 + user confirmation):**
+
 1. Tech stack: React + CRA + MUI + react-chessboard + chess.js + Socket.IO + Node.js/Express ✅
 2. Không login, không auth ✅
 3. Default time control: **15 phút + 0 giây (15+0)** ✅
