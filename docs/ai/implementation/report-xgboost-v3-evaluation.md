@@ -1,4 +1,4 @@
----
+9---
 phase: implementation
 title: V3 Regression Evaluation Report - ELO Continuous Prediction
 description: Phân tích chuyên sâu kết quả Regression V3, giải thích hiện tượng Đa cộng tuyến và Sai số lân cận (Adjacent Misclassification).
