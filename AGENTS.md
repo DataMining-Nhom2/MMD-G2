@@ -29,8 +29,11 @@ This project uses ai-devkit for structured AI-assisted development. Phase docume
 - Update phase docs when significant changes or decisions are made
 
 ## Environment Setup
-- Always activate conda environment before running Python commands: `conda activate`
-- This ensures all Python dependencies are available in the correct environment
+- **LUÔN chạy trong môi trường conda `MMDS`**
+- Kích hoạt môi trường trước khi chạy bất kỳ lệnh Python nào: `conda activate MMDS`
+- **NGHIÊM CẤM chạy với Python global hoặc virtualenv khác**
+- Tất cả dependencies đã được cài sẵn trong môi trường MMDS
+- Khi chạy server/test: luôn đảm bảo đang ở trong conda MMDS
 
 ## Language & Communication
 - Luôn sử dụng tiếng Việt trong giao tiếp, tài liệu và comments
